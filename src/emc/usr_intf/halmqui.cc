@@ -318,7 +318,7 @@ static double receiveTimeout = 10.0;
 static double doneTimeout = 60.;
 
 
-// MQ specific
+// MQ specific..
 MQTTClient client;
 
 int mq_init()
