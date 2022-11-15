@@ -14,6 +14,10 @@
 * Copyright (c) 2006 All rights reserved.
 *
 * Last change:
+
+* start broker daemon: mosquitto -d
+* listen link status:mosquitto_sub -d -t STATUS
+* 
 ********************************************************************/
 
 #include <stdio.h>
@@ -43,47 +47,11 @@
 #include <rtapi_string.h>
 #include "tooldata.hh"
 
-
+// MQ 
 #define ADDRESS     "tcp://localhost:1883"
 #define CLIENTID    "ExampleClientPub"
-#define TOPIC       "testTopic"
-#define PAYLOAD     "Mika"
 #define QOS         1
 #define TIMEOUT     10000L
-
-
-int mqmain(int argc, char* argv[])
-{
-    MQTTClient client;
-    MQTTClient_connectOptions conn_opts = MQTTClient_connectOptions_initializer;
-    MQTTClient_message pubmsg = MQTTClient_message_initializer;
-    MQTTClient_deliveryToken token;
-    int rc;
-
-    MQTTClient_create(&client, ADDRESS, CLIENTID,
-        MQTTCLIENT_PERSISTENCE_NONE, NULL);
-    conn_opts.keepAliveInterval = 20;
-    conn_opts.cleansession = 1;
-
-    if ((rc = MQTTClient_connect(client, &conn_opts)) != MQTTCLIENT_SUCCESS)
-    {
-        printf("Failed to connect, return code %d\n", rc);
-        exit(-1);
-    }
-    pubmsg.payload = (void*)PAYLOAD;
-    pubmsg.payloadlen = strlen(PAYLOAD);
-    pubmsg.qos = QOS;
-    pubmsg.retained = 0;
-    MQTTClient_publishMessage(client, TOPIC, &pubmsg, &token);
-    printf("Waiting for up to %d seconds for publication of %s\n"
-            "on topic %s for client with ClientID: %s\n",
-            (int)(TIMEOUT/1000), PAYLOAD, TOPIC, CLIENTID);
-    rc = MQTTClient_waitForCompletion(client, token, TIMEOUT);
-    printf("Message with delivery token %d delivered\n", token);
-    MQTTClient_disconnect(client, 10000);
-    MQTTClient_destroy(&client);
-    return rc;
-}
 
 
 
@@ -321,13 +289,17 @@ static double doneTimeout = 60.;
 // MQ specific..
 MQTTClient client;
 
-int mq_init()
+
+int mq_connect()
 {   
     //MQTTClient client;
     MQTTClient_connectOptions conn_opts = MQTTClient_connectOptions_initializer;
     MQTTClient_message pubmsg = MQTTClient_message_initializer;
     MQTTClient_deliveryToken token;
     int rc;
+
+    char sTopic[]="STATUS";
+    char sMessage[]="HALMQUI INIT";
     
     MQTTClient_create(
 	&client, 
@@ -342,18 +314,55 @@ int mq_init()
         printf("Failed to connect, return code %d\n", rc);
         exit(-1);
     }
-    pubmsg.payload = (void*)PAYLOAD;
-    pubmsg.payloadlen = strlen(PAYLOAD);
+    pubmsg.payload = (void*)sMessage;
+    pubmsg.payloadlen = strlen(sMessage);
     pubmsg.qos = QOS; 
     pubmsg.retained = 0;
-    MQTTClient_publishMessage(client, TOPIC, &pubmsg, &token);
-    printf("Waiting for up to %d seconds for publication of %s\n"
-            "on topic %s for client with ClientID: %s\n",
-            (int)(TIMEOUT/1000), PAYLOAD, TOPIC, CLIENTID);
+    MQTTClient_publishMessage(client, sTopic, &pubmsg, &token);
+    //printf("Waiting for up to %d seconds for publication of %s\n"
+    //        "on topic %s for client with ClientID: %s\n",
+    //        (int)(TIMEOUT/1000), PAYLOAD, TOPIC, CLIENTID);
     rc = MQTTClient_waitForCompletion(client, token, TIMEOUT);
     printf("Message with delivery token %d delivered\n", token);
     MQTTClient_disconnect(client, 10000);
     MQTTClient_destroy(&client);
+    return rc;
+}
+
+
+
+void mq_disconnect()
+{       
+
+    printf("mq_disconnect\n");
+
+    MQTTClient_disconnect(client, 10000);
+    MQTTClient_destroy(&client);
+}
+
+
+int mq_send(char* sTopic, char *sMesg)
+{
+    int rc;
+    MQTTClient_message pubmsg = MQTTClient_message_initializer;
+    MQTTClient_deliveryToken token;
+
+    printf("mq_send:%s:%s\n", sTopic, sMesg);
+
+    pubmsg.payload = (void*)sMesg;
+    pubmsg.payloadlen = strlen(sMesg);
+    pubmsg.qos = QOS;
+    pubmsg.retained = 0;
+
+    MQTTClient_publishMessage(client, sTopic, &pubmsg, &token);
+
+    //printf("Waiting for up to %d seconds for publication of %s\n"
+    //        "on topic %s for client with ClientID: %s\n",
+    //        (int)(TIMEOUT/1000), PAYLOAD, TOPIC, CLIENTID);
+
+    rc = MQTTClient_waitForCompletion(client, token, TIMEOUT);
+    printf("Message with delivery token %d delivered\n", token);
+
     return rc;
 }
 
@@ -664,7 +673,7 @@ int halui_hal_init(void)
     int axis_num;
 
     /* STEP 1: initialise the hal component */
-    comp_id = hal_init("halui");
+    comp_id = hal_init("halmqui");
     if (comp_id < 0) {
 	rtapi_print_msg(RTAPI_MSG_ERR,
 			"HALUI: ERROR: hal_init() failed\n");
@@ -682,129 +691,129 @@ int halui_hal_init(void)
 
     /* STEP 3a: export the out-pin(s) */
 
-    retval =  hal_pin_float_newf(HAL_OUT, &(halui_data->units_per_mm), comp_id, "halui.machine.units-per-mm");
+    retval =  hal_pin_float_newf(HAL_OUT, &(halui_data->units_per_mm), comp_id, "halmqui.machine.units-per-mm");
     if (retval < 0) return retval;
-    retval = halui_export_pin_OUT_bit(&(halui_data->machine_is_on), "halui.machine.is-on");
+    retval = halui_export_pin_OUT_bit(&(halui_data->machine_is_on), "halmqui.machine.is-on");
     if (retval < 0) return retval;
-    retval = halui_export_pin_OUT_bit(&(halui_data->estop_is_activated), "halui.estop.is-activated");
+    retval = halui_export_pin_OUT_bit(&(halui_data->estop_is_activated), "halmqui.estop.is-activated");
     if (retval < 0) return retval;
-    retval = halui_export_pin_OUT_bit(&(halui_data->mode_is_manual), "halui.mode.is-manual");
+    retval = halui_export_pin_OUT_bit(&(halui_data->mode_is_manual), "halmqui.mode.is-manual");
     if (retval < 0) return retval;
-    retval = halui_export_pin_OUT_bit(&(halui_data->mode_is_auto), "halui.mode.is-auto");
+    retval = halui_export_pin_OUT_bit(&(halui_data->mode_is_auto), "halmqui.mode.is-auto");
     if (retval < 0) return retval;
-    retval = halui_export_pin_OUT_bit(&(halui_data->mode_is_mdi), "halui.mode.is-mdi");
+    retval = halui_export_pin_OUT_bit(&(halui_data->mode_is_mdi), "halmqui.mode.is-mdi");
     if (retval < 0) return retval;
-    retval = halui_export_pin_OUT_bit(&(halui_data->mode_is_teleop), "halui.mode.is-teleop");
+    retval = halui_export_pin_OUT_bit(&(halui_data->mode_is_teleop), "halmqui.mode.is-teleop");
     if (retval < 0) return retval;
-    retval = halui_export_pin_OUT_bit(&(halui_data->mode_is_joint), "halui.mode.is-joint");
+    retval = halui_export_pin_OUT_bit(&(halui_data->mode_is_joint), "halmqui.mode.is-joint");
     if (retval < 0) return retval;
-    retval = halui_export_pin_OUT_bit(&(halui_data->mist_is_on), "halui.mist.is-on");
+    retval = halui_export_pin_OUT_bit(&(halui_data->mist_is_on), "halmqui.mist.is-on");
     if (retval < 0) return retval;
-    retval = halui_export_pin_OUT_bit(&(halui_data->flood_is_on), "halui.flood.is-on");
+    retval = halui_export_pin_OUT_bit(&(halui_data->flood_is_on), "halmqui.flood.is-on");
     if (retval < 0) return retval;
-    retval = halui_export_pin_OUT_bit(&(halui_data->lube_is_on), "halui.lube.is-on");
+    retval = halui_export_pin_OUT_bit(&(halui_data->lube_is_on), "halmqui.lube.is-on");
     if (retval < 0) return retval;
-    retval = halui_export_pin_OUT_bit(&(halui_data->program_is_idle), "halui.program.is-idle");
+    retval = halui_export_pin_OUT_bit(&(halui_data->program_is_idle), "halmqui.program.is-idle");
     if (retval < 0) return retval;
-    retval = halui_export_pin_OUT_bit(&(halui_data->program_is_running), "halui.program.is-running");
+    retval = halui_export_pin_OUT_bit(&(halui_data->program_is_running), "halmqui.program.is-running");
     if (retval < 0) return retval;
-    retval = halui_export_pin_OUT_bit(&(halui_data->program_is_paused), "halui.program.is-paused");
+    retval = halui_export_pin_OUT_bit(&(halui_data->program_is_paused), "halmqui.program.is-paused");
     if (retval < 0) return retval;
-    retval = halui_export_pin_OUT_bit(&(halui_data->program_os_is_on), "halui.program.optional-stop.is-on");
+    retval = halui_export_pin_OUT_bit(&(halui_data->program_os_is_on), "halmqui.program.optional-stop.is-on");
     if (retval < 0) return retval;
-    retval = halui_export_pin_OUT_bit(&(halui_data->program_bd_is_on), "halui.program.block-delete.is-on");
+    retval = halui_export_pin_OUT_bit(&(halui_data->program_bd_is_on), "halmqui.program.block-delete.is-on");
 
     for (spindle = 0; spindle < num_spindles; spindle++){
 		if (retval < 0) return retval;
-		retval = hal_pin_bit_newf(HAL_OUT, &(halui_data->spindle_is_on[spindle]), comp_id,  "halui.spindle.%i.is-on", spindle);
+		retval = hal_pin_bit_newf(HAL_OUT, &(halui_data->spindle_is_on[spindle]), comp_id,  "halmqui.spindle.%i.is-on", spindle);
 		if (retval < 0) return retval;
-		retval = hal_pin_bit_newf(HAL_OUT, &(halui_data->spindle_runs_forward[spindle]),comp_id,  "halui.spindle.%i.runs-forward", spindle);
+		retval = hal_pin_bit_newf(HAL_OUT, &(halui_data->spindle_runs_forward[spindle]),comp_id,  "halmqui.spindle.%i.runs-forward", spindle);
 		if (retval < 0) return retval;
-		retval = hal_pin_bit_newf(HAL_OUT, &(halui_data->spindle_runs_backward[spindle]), comp_id, "halui.spindle.%i.runs-backward", spindle);
+		retval = hal_pin_bit_newf(HAL_OUT, &(halui_data->spindle_runs_backward[spindle]), comp_id, "halmqui.spindle.%i.runs-backward", spindle);
 		if (retval < 0) return retval;
-		retval = hal_pin_bit_newf(HAL_OUT, &(halui_data->spindle_brake_is_on[spindle]), comp_id, "halui.spindle.%i.brake-is-on", spindle);
+		retval = hal_pin_bit_newf(HAL_OUT, &(halui_data->spindle_brake_is_on[spindle]), comp_id, "halmqui.spindle.%i.brake-is-on", spindle);
 		if (retval < 0) return retval;
-		retval = hal_pin_bit_newf(HAL_IN,  &(halui_data->spindle_start[spindle]), comp_id, "halui.spindle.%i.start", spindle);
+		retval = hal_pin_bit_newf(HAL_IN,  &(halui_data->spindle_start[spindle]), comp_id, "halmqui.spindle.%i.start", spindle);
 		if (retval < 0) return retval;
-		retval = hal_pin_bit_newf(HAL_IN,  &(halui_data->spindle_stop[spindle]), comp_id, "halui.spindle.%i.stop", spindle);
+		retval = hal_pin_bit_newf(HAL_IN,  &(halui_data->spindle_stop[spindle]), comp_id, "halmqui.spindle.%i.stop", spindle);
 		if (retval < 0) return retval;
-		retval = hal_pin_bit_newf(HAL_IN,  &(halui_data->spindle_forward[spindle]), comp_id, "halui.spindle.%i.forward", spindle);
+		retval = hal_pin_bit_newf(HAL_IN,  &(halui_data->spindle_forward[spindle]), comp_id, "halmqui.spindle.%i.forward", spindle);
 		if (retval < 0) return retval;
-		retval = hal_pin_bit_newf(HAL_IN,  &(halui_data->spindle_reverse[spindle]), comp_id, "halui.spindle.%i.reverse", spindle);
+		retval = hal_pin_bit_newf(HAL_IN,  &(halui_data->spindle_reverse[spindle]), comp_id, "halmqui.spindle.%i.reverse", spindle);
 		if (retval < 0) return retval;
-		retval = hal_pin_bit_newf(HAL_IN,  &(halui_data->spindle_increase[spindle]), comp_id, "halui.spindle.%i.increase", spindle);
+		retval = hal_pin_bit_newf(HAL_IN,  &(halui_data->spindle_increase[spindle]), comp_id, "halmqui.spindle.%i.increase", spindle);
 		if (retval < 0) return retval;
-		retval = hal_pin_bit_newf(HAL_IN,  &(halui_data->spindle_decrease[spindle]), comp_id, "halui.spindle.%i.decrease", spindle);
+		retval = hal_pin_bit_newf(HAL_IN,  &(halui_data->spindle_decrease[spindle]), comp_id, "halmqui.spindle.%i.decrease", spindle);
 		if (retval < 0) return retval;
-		retval = hal_pin_bit_newf(HAL_IN,  &(halui_data->spindle_brake_on[spindle]), comp_id, "halui.spindle.%i.brake-on", spindle);
+		retval = hal_pin_bit_newf(HAL_IN,  &(halui_data->spindle_brake_on[spindle]), comp_id, "halmqui.spindle.%i.brake-on", spindle);
 		if (retval < 0) return retval;
-		retval = hal_pin_bit_newf(HAL_IN,  &(halui_data->spindle_brake_off[spindle]), comp_id, "halui.spindle.%i.brake-off", spindle);
+		retval = hal_pin_bit_newf(HAL_IN,  &(halui_data->spindle_brake_off[spindle]), comp_id, "halmqui.spindle.%i.brake-off", spindle);
 		if (retval < 0) return retval;
-	    retval =  hal_pin_float_newf(HAL_OUT, &(halui_data->so_value[spindle]), comp_id, "halui.spindle.%i.override.value", spindle);
+	    retval =  hal_pin_float_newf(HAL_OUT, &(halui_data->so_value[spindle]), comp_id, "halmqui.spindle.%i.override.value", spindle);
 	    if (retval < 0) return retval;
-	    retval = hal_pin_s32_newf(HAL_IN,  &(halui_data->so_counts[spindle]), comp_id, "halui.spindle.%i.override.counts", spindle);
+	    retval = hal_pin_s32_newf(HAL_IN,  &(halui_data->so_counts[spindle]), comp_id, "halmqui.spindle.%i.override.counts", spindle);
 	    if (retval < 0) return retval;
 	    *halui_data->so_counts = 0;
-	    retval = hal_pin_bit_newf(HAL_IN,  &(halui_data->so_count_enable[spindle]), comp_id, "halui.spindle.%i.override.count-enable", spindle);
+	    retval = hal_pin_bit_newf(HAL_IN,  &(halui_data->so_count_enable[spindle]), comp_id, "halmqui.spindle.%i.override.count-enable", spindle);
 	    if (retval < 0) return retval;
 	    *halui_data->so_count_enable[spindle] = 1;
-	    retval = hal_pin_bit_newf(HAL_IN,  &(halui_data->so_direct_value[spindle]), comp_id, "halui.spindle.%i.override.direct-value", spindle);
+	    retval = hal_pin_bit_newf(HAL_IN,  &(halui_data->so_direct_value[spindle]), comp_id, "halmqui.spindle.%i.override.direct-value", spindle);
 	    if (retval < 0) return retval;
 	    *halui_data->so_direct_value[spindle] = 0;
-	    retval = hal_pin_float_newf(HAL_IN,  &(halui_data->so_scale[spindle]), comp_id, "halui.spindle.%i.override.scale", spindle);
+	    retval = hal_pin_float_newf(HAL_IN,  &(halui_data->so_scale[spindle]), comp_id, "halmqui.spindle.%i.override.scale", spindle);
 	    if (retval < 0) return retval;
-	    retval = hal_pin_bit_newf(HAL_IN,  &(halui_data->so_increase[spindle]), comp_id, "halui.spindle.%i.override.increase", spindle);
+	    retval = hal_pin_bit_newf(HAL_IN,  &(halui_data->so_increase[spindle]), comp_id, "halmqui.spindle.%i.override.increase", spindle);
 	    if (retval < 0) return retval;
-	    retval = hal_pin_bit_newf(HAL_IN,  &(halui_data->so_decrease[spindle]), comp_id, "halui.spindle.%i.override.decrease", spindle);
+	    retval = hal_pin_bit_newf(HAL_IN,  &(halui_data->so_decrease[spindle]), comp_id, "halmqui.spindle.%i.override.decrease", spindle);
             if (retval < 0) return retval;
-            retval = hal_pin_bit_newf(HAL_IN,  &(halui_data->so_reset[spindle]), comp_id, "halui.spindle.%i.override.reset", spindle);
+            retval = hal_pin_bit_newf(HAL_IN,  &(halui_data->so_reset[spindle]), comp_id, "halmqui.spindle.%i.override.reset", spindle);
     }
 
     for (joint=0; joint < num_joints ; joint++) {
-	retval =  hal_pin_bit_newf(HAL_OUT, &(halui_data->joint_is_homed[joint]), comp_id, "halui.joint.%d.is-homed", joint);
+	retval =  hal_pin_bit_newf(HAL_OUT, &(halui_data->joint_is_homed[joint]), comp_id, "halmqui.joint.%d.is-homed", joint);
 	if (retval < 0) return retval;
-	retval =  hal_pin_bit_newf(HAL_OUT, &(halui_data->joint_is_selected[joint]), comp_id, "halui.joint.%d.is-selected", joint);
+	retval =  hal_pin_bit_newf(HAL_OUT, &(halui_data->joint_is_selected[joint]), comp_id, "halmqui.joint.%d.is-selected", joint);
 	if (retval < 0) return retval;
-	retval =  hal_pin_bit_newf(HAL_OUT, &(halui_data->joint_on_soft_min_limit[joint]), comp_id, "halui.joint.%d.on-soft-min-limit", joint);
+	retval =  hal_pin_bit_newf(HAL_OUT, &(halui_data->joint_on_soft_min_limit[joint]), comp_id, "halmqui.joint.%d.on-soft-min-limit", joint);
 	if (retval < 0) return retval;
-	retval =  hal_pin_bit_newf(HAL_OUT, &(halui_data->joint_on_soft_max_limit[joint]), comp_id, "halui.joint.%d.on-soft-max-limit", joint);
+	retval =  hal_pin_bit_newf(HAL_OUT, &(halui_data->joint_on_soft_max_limit[joint]), comp_id, "halmqui.joint.%d.on-soft-max-limit", joint);
 	if (retval < 0) return retval;
-	retval =  hal_pin_bit_newf(HAL_OUT, &(halui_data->joint_on_hard_min_limit[joint]), comp_id, "halui.joint.%d.on-hard-min-limit", joint);
+	retval =  hal_pin_bit_newf(HAL_OUT, &(halui_data->joint_on_hard_min_limit[joint]), comp_id, "halmqui.joint.%d.on-hard-min-limit", joint);
 	if (retval < 0) return retval;
-	retval =  hal_pin_bit_newf(HAL_OUT, &(halui_data->joint_on_hard_max_limit[joint]), comp_id, "halui.joint.%d.on-hard-max-limit", joint);
+	retval =  hal_pin_bit_newf(HAL_OUT, &(halui_data->joint_on_hard_max_limit[joint]), comp_id, "halmqui.joint.%d.on-hard-max-limit", joint);
 	if (retval < 0) return retval;
-	retval =  hal_pin_bit_newf(HAL_OUT, &(halui_data->joint_override_limits[joint]), comp_id, "halui.joint.%d.override-limits", joint);
+	retval =  hal_pin_bit_newf(HAL_OUT, &(halui_data->joint_override_limits[joint]), comp_id, "halmqui.joint.%d.override-limits", joint);
 	if (retval < 0) return retval;
-	retval =  hal_pin_bit_newf(HAL_OUT, &(halui_data->joint_has_fault[joint]), comp_id, "halui.joint.%d.has-fault", joint);
+	retval =  hal_pin_bit_newf(HAL_OUT, &(halui_data->joint_has_fault[joint]), comp_id, "halmqui.joint.%d.has-fault", joint);
 	if (retval < 0) return retval;
     }
 
-    retval =  hal_pin_bit_newf(HAL_OUT, &(halui_data->joint_on_soft_min_limit[num_joints]), comp_id, "halui.joint.selected.on-soft-min-limit");
+    retval =  hal_pin_bit_newf(HAL_OUT, &(halui_data->joint_on_soft_min_limit[num_joints]), comp_id, "halmqui.joint.selected.on-soft-min-limit");
     if (retval < 0) return retval;
-    retval =  hal_pin_bit_newf(HAL_OUT, &(halui_data->joint_on_soft_max_limit[num_joints]), comp_id, "halui.joint.selected.on-soft-max-limit");
+    retval =  hal_pin_bit_newf(HAL_OUT, &(halui_data->joint_on_soft_max_limit[num_joints]), comp_id, "halmqui.joint.selected.on-soft-max-limit");
     if (retval < 0) return retval;
-    retval =  hal_pin_bit_newf(HAL_OUT, &(halui_data->joint_on_hard_min_limit[num_joints]), comp_id, "halui.joint.selected.on-hard-min-limit");
+    retval =  hal_pin_bit_newf(HAL_OUT, &(halui_data->joint_on_hard_min_limit[num_joints]), comp_id, "halmqui.joint.selected.on-hard-min-limit");
     if (retval < 0) return retval;
-    retval =  hal_pin_bit_newf(HAL_OUT, &(halui_data->joint_on_hard_max_limit[num_joints]), comp_id, "halui.joint.selected.on-hard-max-limit");
+    retval =  hal_pin_bit_newf(HAL_OUT, &(halui_data->joint_on_hard_max_limit[num_joints]), comp_id, "halmqui.joint.selected.on-hard-max-limit");
     if (retval < 0) return retval;
-    retval =  hal_pin_bit_newf(HAL_OUT, &(halui_data->joint_override_limits[num_joints]), comp_id, "halui.joint.selected.override-limits");
+    retval =  hal_pin_bit_newf(HAL_OUT, &(halui_data->joint_override_limits[num_joints]), comp_id, "halmqui.joint.selected.override-limits");
     if (retval < 0) return retval;
-    retval =  hal_pin_bit_newf(HAL_OUT, &(halui_data->joint_has_fault[num_joints]), comp_id, "halui.joint.selected.has-fault");
+    retval =  hal_pin_bit_newf(HAL_OUT, &(halui_data->joint_has_fault[num_joints]), comp_id, "halmqui.joint.selected.has-fault");
     if (retval < 0) return retval;
-    retval =  hal_pin_bit_newf(HAL_OUT, &(halui_data->joint_is_homed[num_joints]), comp_id, "halui.joint.selected.is-homed");
+    retval =  hal_pin_bit_newf(HAL_OUT, &(halui_data->joint_is_homed[num_joints]), comp_id, "halmqui.joint.selected.is-homed");
     if (retval < 0) return retval;
 
     for (axis_num=0; axis_num < EMCMOT_MAX_AXIS ; axis_num++) {
         if ( !(axis_mask & (1 << axis_num)) ) { continue; }
         char c = "xyzabcuvw"[axis_num];
 
-        retval =  hal_pin_bit_newf(HAL_OUT, &(halui_data->axis_is_selected[axis_num]), comp_id, "halui.axis.%c.is-selected", c);
+        retval =  hal_pin_bit_newf(HAL_OUT, &(halui_data->axis_is_selected[axis_num]), comp_id, "halmqui.axis.%c.is-selected", c);
         if (retval < 0) return retval;
-	retval =  hal_pin_float_newf(HAL_OUT, &(halui_data->axis_pos_commanded[axis_num]), comp_id, "halui.axis.%c.pos-commanded", c);
+	retval =  hal_pin_float_newf(HAL_OUT, &(halui_data->axis_pos_commanded[axis_num]), comp_id, "halmqui.axis.%c.pos-commanded", c);
         if (retval < 0) return retval;
-	retval =  hal_pin_float_newf(HAL_OUT, &(halui_data->axis_pos_feedback[axis_num]), comp_id, "halui.axis.%c.pos-feedback", c);
+	retval =  hal_pin_float_newf(HAL_OUT, &(halui_data->axis_pos_feedback[axis_num]), comp_id, "halmqui.axis.%c.pos-feedback", c);
         if (retval < 0) return retval;
-	retval =  hal_pin_float_newf(HAL_OUT, &(halui_data->axis_pos_relative[axis_num]), comp_id, "halui.axis.%c.pos-relative", c);
+	retval =  hal_pin_float_newf(HAL_OUT, &(halui_data->axis_pos_relative[axis_num]), comp_id, "halmqui.axis.%c.pos-relative", c);
         if (retval < 0) return retval;
     }
 
@@ -812,226 +821,226 @@ int halui_hal_init(void)
     *halui_data->joint_is_selected[0] = 1;
     *halui_data->axis_is_selected[0] = 1;
 
-    retval =  hal_pin_float_newf(HAL_OUT, &(halui_data->mv_value), comp_id, "halui.max-velocity.value");
+    retval =  hal_pin_float_newf(HAL_OUT, &(halui_data->mv_value), comp_id, "halmqui.max-velocity.value");
     if (retval < 0) return retval;
-    retval =  hal_pin_float_newf(HAL_OUT, &(halui_data->fo_value), comp_id, "halui.feed-override.value");
+    retval =  hal_pin_float_newf(HAL_OUT, &(halui_data->fo_value), comp_id, "halmqui.feed-override.value");
     if (retval < 0) return retval;
-    retval =  hal_pin_float_newf(HAL_OUT, &(halui_data->ro_value), comp_id, "halui.rapid-override.value");
+    retval =  hal_pin_float_newf(HAL_OUT, &(halui_data->ro_value), comp_id, "halmqui.rapid-override.value");
     if (retval < 0) return retval;
-    retval = hal_pin_u32_newf(HAL_OUT, &(halui_data->joint_selected), comp_id, "halui.joint.selected");
+    retval = hal_pin_u32_newf(HAL_OUT, &(halui_data->joint_selected), comp_id, "halmqui.joint.selected");
     if (retval < 0) return retval;
-    retval = hal_pin_u32_newf(HAL_OUT, &(halui_data->axis_selected), comp_id, "halui.axis.selected");
+    retval = hal_pin_u32_newf(HAL_OUT, &(halui_data->axis_selected), comp_id, "halmqui.axis.selected");
     if (retval < 0) return retval;
-    retval = hal_pin_u32_newf(HAL_OUT, &(halui_data->tool_number), comp_id, "halui.tool.number");
+    retval = hal_pin_u32_newf(HAL_OUT, &(halui_data->tool_number), comp_id, "halmqui.tool.number");
     if (retval < 0) return retval;
-    retval =  hal_pin_float_newf(HAL_OUT, &(halui_data->tool_length_offset_x), comp_id, "halui.tool.length_offset.x");
+    retval =  hal_pin_float_newf(HAL_OUT, &(halui_data->tool_length_offset_x), comp_id, "halmqui.tool.length_offset.x");
     if (retval < 0) return retval;
-    retval =  hal_pin_float_newf(HAL_OUT, &(halui_data->tool_length_offset_y), comp_id, "halui.tool.length_offset.y");
+    retval =  hal_pin_float_newf(HAL_OUT, &(halui_data->tool_length_offset_y), comp_id, "halmqui.tool.length_offset.y");
     if (retval < 0) return retval;
-    retval =  hal_pin_float_newf(HAL_OUT, &(halui_data->tool_length_offset_z), comp_id, "halui.tool.length_offset.z");
+    retval =  hal_pin_float_newf(HAL_OUT, &(halui_data->tool_length_offset_z), comp_id, "halmqui.tool.length_offset.z");
     if (retval < 0) return retval;
-    retval =  hal_pin_float_newf(HAL_OUT, &(halui_data->tool_length_offset_a), comp_id, "halui.tool.length_offset.a");
+    retval =  hal_pin_float_newf(HAL_OUT, &(halui_data->tool_length_offset_a), comp_id, "halmqui.tool.length_offset.a");
     if (retval < 0) return retval;
-    retval =  hal_pin_float_newf(HAL_OUT, &(halui_data->tool_length_offset_b), comp_id, "halui.tool.length_offset.b");
+    retval =  hal_pin_float_newf(HAL_OUT, &(halui_data->tool_length_offset_b), comp_id, "halmqui.tool.length_offset.b");
     if (retval < 0) return retval;
-    retval =  hal_pin_float_newf(HAL_OUT, &(halui_data->tool_length_offset_c), comp_id, "halui.tool.length_offset.c");
+    retval =  hal_pin_float_newf(HAL_OUT, &(halui_data->tool_length_offset_c), comp_id, "halmqui.tool.length_offset.c");
     if (retval < 0) return retval;
-    retval =  hal_pin_float_newf(HAL_OUT, &(halui_data->tool_length_offset_u), comp_id, "halui.tool.length_offset.u");
+    retval =  hal_pin_float_newf(HAL_OUT, &(halui_data->tool_length_offset_u), comp_id, "halmqui.tool.length_offset.u");
     if (retval < 0) return retval;
-    retval =  hal_pin_float_newf(HAL_OUT, &(halui_data->tool_length_offset_v), comp_id, "halui.tool.length_offset.v");
+    retval =  hal_pin_float_newf(HAL_OUT, &(halui_data->tool_length_offset_v), comp_id, "halmqui.tool.length_offset.v");
     if (retval < 0) return retval;
-    retval =  hal_pin_float_newf(HAL_OUT, &(halui_data->tool_length_offset_w), comp_id, "halui.tool.length_offset.w");
+    retval =  hal_pin_float_newf(HAL_OUT, &(halui_data->tool_length_offset_w), comp_id, "halmqui.tool.length_offset.w");
     if (retval < 0) return retval;
-    retval =  hal_pin_float_newf(HAL_OUT, &(halui_data->tool_diameter), comp_id, "halui.tool.diameter");
+    retval =  hal_pin_float_newf(HAL_OUT, &(halui_data->tool_diameter), comp_id, "halmqui.tool.diameter");
     if (retval < 0) return retval;
 
     /* STEP 3b: export the in-pin(s) */
 
-    retval = halui_export_pin_IN_bit(&(halui_data->machine_on), "halui.machine.on");
+    retval = halui_export_pin_IN_bit(&(halui_data->machine_on), "halmqui.machine.on");
     if (retval < 0) return retval;
-    retval = halui_export_pin_IN_bit(&(halui_data->machine_off), "halui.machine.off");
+    retval = halui_export_pin_IN_bit(&(halui_data->machine_off), "halmqui.machine.off");
     if (retval < 0) return retval;
-    retval = halui_export_pin_IN_bit(&(halui_data->estop_activate), "halui.estop.activate");
+    retval = halui_export_pin_IN_bit(&(halui_data->estop_activate), "halmqui.estop.activate");
     if (retval < 0) return retval;
-    retval = halui_export_pin_IN_bit(&(halui_data->estop_reset), "halui.estop.reset");
+    retval = halui_export_pin_IN_bit(&(halui_data->estop_reset), "halmqui.estop.reset");
     if (retval < 0) return retval;
-    retval = halui_export_pin_IN_bit(&(halui_data->mode_manual), "halui.mode.manual");
+    retval = halui_export_pin_IN_bit(&(halui_data->mode_manual), "halmqui.mode.manual");
     if (retval < 0) return retval;
-    retval = halui_export_pin_IN_bit(&(halui_data->mode_auto), "halui.mode.auto");
+    retval = halui_export_pin_IN_bit(&(halui_data->mode_auto), "halmqui.mode.auto");
     if (retval < 0) return retval;
-    retval = halui_export_pin_IN_bit(&(halui_data->mode_mdi), "halui.mode.mdi");
+    retval = halui_export_pin_IN_bit(&(halui_data->mode_mdi), "halmqui.mode.mdi");
     if (retval < 0) return retval;
-    retval = halui_export_pin_IN_bit(&(halui_data->mode_teleop), "halui.mode.teleop");
+    retval = halui_export_pin_IN_bit(&(halui_data->mode_teleop), "halmqui.mode.teleop");
     if (retval < 0) return retval;
-    retval = halui_export_pin_IN_bit(&(halui_data->mode_joint), "halui.mode.joint");
+    retval = halui_export_pin_IN_bit(&(halui_data->mode_joint), "halmqui.mode.joint");
     if (retval < 0) return retval;
-    retval = halui_export_pin_IN_bit(&(halui_data->mist_on), "halui.mist.on");
+    retval = halui_export_pin_IN_bit(&(halui_data->mist_on), "halmqui.mist.on");
     if (retval < 0) return retval;
-    retval = halui_export_pin_IN_bit(&(halui_data->mist_off), "halui.mist.off");
+    retval = halui_export_pin_IN_bit(&(halui_data->mist_off), "halmqui.mist.off");
     if (retval < 0) return retval;
-    retval = halui_export_pin_IN_bit(&(halui_data->flood_on), "halui.flood.on");
+    retval = halui_export_pin_IN_bit(&(halui_data->flood_on), "halmqui.flood.on");
     if (retval < 0) return retval;
-    retval = halui_export_pin_IN_bit(&(halui_data->flood_off), "halui.flood.off");
+    retval = halui_export_pin_IN_bit(&(halui_data->flood_off), "halmqui.flood.off");
     if (retval < 0) return retval;
-    retval = halui_export_pin_IN_bit(&(halui_data->lube_on), "halui.lube.on");
+    retval = halui_export_pin_IN_bit(&(halui_data->lube_on), "halmqui.lube.on");
     if (retval < 0) return retval;
-    retval = halui_export_pin_IN_bit(&(halui_data->lube_off), "halui.lube.off");
+    retval = halui_export_pin_IN_bit(&(halui_data->lube_off), "halmqui.lube.off");
     if (retval < 0) return retval;
-    retval = halui_export_pin_IN_bit(&(halui_data->program_run), "halui.program.run");
+    retval = halui_export_pin_IN_bit(&(halui_data->program_run), "halmqui.program.run");
     if (retval < 0) return retval;
-    retval = halui_export_pin_IN_bit(&(halui_data->program_pause), "halui.program.pause");
+    retval = halui_export_pin_IN_bit(&(halui_data->program_pause), "halmqui.program.pause");
     if (retval < 0) return retval;
-    retval = halui_export_pin_IN_bit(&(halui_data->program_resume), "halui.program.resume");
+    retval = halui_export_pin_IN_bit(&(halui_data->program_resume), "halmqui.program.resume");
     if (retval < 0) return retval;
-    retval = halui_export_pin_IN_bit(&(halui_data->program_step), "halui.program.step");
+    retval = halui_export_pin_IN_bit(&(halui_data->program_step), "halmqui.program.step");
     if (retval < 0) return retval;
-    retval = halui_export_pin_IN_bit(&(halui_data->program_stop), "halui.program.stop");
+    retval = halui_export_pin_IN_bit(&(halui_data->program_stop), "halmqui.program.stop");
     if (retval < 0) return retval;
-    retval = halui_export_pin_IN_bit(&(halui_data->program_os_on), "halui.program.optional-stop.on");
+    retval = halui_export_pin_IN_bit(&(halui_data->program_os_on), "halmqui.program.optional-stop.on");
     if (retval < 0) return retval;
-    retval = halui_export_pin_IN_bit(&(halui_data->program_os_off), "halui.program.optional-stop.off");
+    retval = halui_export_pin_IN_bit(&(halui_data->program_os_off), "halmqui.program.optional-stop.off");
     if (retval < 0) return retval;
-    retval = halui_export_pin_IN_bit(&(halui_data->program_bd_on), "halui.program.block-delete.on");
+    retval = halui_export_pin_IN_bit(&(halui_data->program_bd_on), "halmqui.program.block-delete.on");
     if (retval < 0) return retval;
-    retval = halui_export_pin_IN_bit(&(halui_data->program_bd_off), "halui.program.block-delete.off");
+    retval = halui_export_pin_IN_bit(&(halui_data->program_bd_off), "halmqui.program.block-delete.off");
     if (retval < 0) return retval;
 
-    retval = halui_export_pin_IN_s32(&(halui_data->mv_counts), "halui.max-velocity.counts");
+    retval = halui_export_pin_IN_s32(&(halui_data->mv_counts), "halmqui.max-velocity.counts");
     if (retval < 0) return retval;
     *halui_data->mv_counts = 0;
-    retval = halui_export_pin_IN_bit(&(halui_data->mv_count_enable), "halui.max-velocity.count-enable");
+    retval = halui_export_pin_IN_bit(&(halui_data->mv_count_enable), "halmqui.max-velocity.count-enable");
     if (retval < 0) return retval;
     *halui_data->mv_count_enable = 1;
-    retval = halui_export_pin_IN_bit(&(halui_data->mv_direct_value), "halui.max-velocity.direct-value");
+    retval = halui_export_pin_IN_bit(&(halui_data->mv_direct_value), "halmqui.max-velocity.direct-value");
     if (retval < 0) return retval;
     *halui_data->mv_direct_value = 0;
-    retval = halui_export_pin_IN_float(&(halui_data->mv_scale), "halui.max-velocity.scale");
+    retval = halui_export_pin_IN_float(&(halui_data->mv_scale), "halmqui.max-velocity.scale");
     if (retval < 0) return retval;
-    retval = halui_export_pin_IN_bit(&(halui_data->mv_increase), "halui.max-velocity.increase");
+    retval = halui_export_pin_IN_bit(&(halui_data->mv_increase), "halmqui.max-velocity.increase");
     if (retval < 0) return retval;
-    retval = halui_export_pin_IN_bit(&(halui_data->mv_decrease), "halui.max-velocity.decrease");
+    retval = halui_export_pin_IN_bit(&(halui_data->mv_decrease), "halmqui.max-velocity.decrease");
     if (retval < 0) return retval;
 
-    retval = halui_export_pin_IN_s32(&(halui_data->fo_counts), "halui.feed-override.counts");
+    retval = halui_export_pin_IN_s32(&(halui_data->fo_counts), "halmqui.feed-override.counts");
     if (retval < 0) return retval;
     *halui_data->fo_counts = 0;
-    retval = halui_export_pin_IN_bit(&(halui_data->fo_count_enable), "halui.feed-override.count-enable");
+    retval = halui_export_pin_IN_bit(&(halui_data->fo_count_enable), "halmqui.feed-override.count-enable");
     if (retval < 0) return retval;
     *halui_data->fo_count_enable = 1;
-    retval = halui_export_pin_IN_bit(&(halui_data->fo_direct_value), "halui.feed-override.direct-value");
+    retval = halui_export_pin_IN_bit(&(halui_data->fo_direct_value), "halmqui.feed-override.direct-value");
     if (retval < 0) return retval;
     *halui_data->fo_direct_value = 0;
-    retval = halui_export_pin_IN_float(&(halui_data->fo_scale), "halui.feed-override.scale");
+    retval = halui_export_pin_IN_float(&(halui_data->fo_scale), "halmqui.feed-override.scale");
     if (retval < 0) return retval;
-    retval = halui_export_pin_IN_bit(&(halui_data->fo_increase), "halui.feed-override.increase");
+    retval = halui_export_pin_IN_bit(&(halui_data->fo_increase), "halmqui.feed-override.increase");
     if (retval < 0) return retval;
-    retval = halui_export_pin_IN_bit(&(halui_data->fo_decrease), "halui.feed-override.decrease");
+    retval = halui_export_pin_IN_bit(&(halui_data->fo_decrease), "halmqui.feed-override.decrease");
     if (retval < 0) return retval;
-    retval = halui_export_pin_IN_bit(&(halui_data->fo_reset), "halui.feed-override.reset");
+    retval = halui_export_pin_IN_bit(&(halui_data->fo_reset), "halmqui.feed-override.reset");
     if (retval < 0) return retval;
 
-    retval = halui_export_pin_IN_s32(&(halui_data->ro_counts), "halui.rapid-override.counts");
+    retval = halui_export_pin_IN_s32(&(halui_data->ro_counts), "halmqui.rapid-override.counts");
     if (retval < 0) return retval;
     *halui_data->ro_counts = 0;
-    retval = halui_export_pin_IN_bit(&(halui_data->ro_count_enable), "halui.rapid-override.count-enable");
+    retval = halui_export_pin_IN_bit(&(halui_data->ro_count_enable), "halmqui.rapid-override.count-enable");
     if (retval < 0) return retval;
     *halui_data->ro_count_enable = 1;
-    retval = halui_export_pin_IN_bit(&(halui_data->ro_direct_value), "halui.rapid-override.direct-value");
+    retval = halui_export_pin_IN_bit(&(halui_data->ro_direct_value), "halmqui.rapid-override.direct-value");
     if (retval < 0) return retval;
     *halui_data->ro_direct_value = 0;
-    retval = halui_export_pin_IN_float(&(halui_data->ro_scale), "halui.rapid-override.scale");
+    retval = halui_export_pin_IN_float(&(halui_data->ro_scale), "halmqui.rapid-override.scale");
     if (retval < 0) return retval;
-    retval = halui_export_pin_IN_bit(&(halui_data->ro_increase), "halui.rapid-override.increase");
+    retval = halui_export_pin_IN_bit(&(halui_data->ro_increase), "halmqui.rapid-override.increase");
     if (retval < 0) return retval;
-    retval = halui_export_pin_IN_bit(&(halui_data->ro_decrease), "halui.rapid-override.decrease");
+    retval = halui_export_pin_IN_bit(&(halui_data->ro_decrease), "halmqui.rapid-override.decrease");
     if (retval < 0) return retval;
-    retval = halui_export_pin_IN_bit(&(halui_data->ro_reset), "halui.rapid-override.reset");
+    retval = halui_export_pin_IN_bit(&(halui_data->ro_reset), "halmqui.rapid-override.reset");
     if (retval < 0) return retval;
 
     if (have_home_all) {
-        retval = halui_export_pin_IN_bit(&(halui_data->home_all), "halui.home-all");
+        retval = halui_export_pin_IN_bit(&(halui_data->home_all), "halmqui.home-all");
         if (retval < 0) return retval;
     }
 
-    retval = halui_export_pin_IN_bit(&(halui_data->abort), "halui.abort");
+    retval = halui_export_pin_IN_bit(&(halui_data->abort), "halmqui.abort");
     if (retval < 0) return retval;
 
     for (joint=0; joint < num_joints ; joint++) {
-	retval =  hal_pin_bit_newf(HAL_IN, &(halui_data->joint_home[joint]), comp_id, "halui.joint.%d.home", joint);
+	retval =  hal_pin_bit_newf(HAL_IN, &(halui_data->joint_home[joint]), comp_id, "halmqui.joint.%d.home", joint);
 	if (retval < 0) return retval;
-	retval =  hal_pin_bit_newf(HAL_IN, &(halui_data->joint_unhome[joint]), comp_id, "halui.joint.%d.unhome", joint);
+	retval =  hal_pin_bit_newf(HAL_IN, &(halui_data->joint_unhome[joint]), comp_id, "halmqui.joint.%d.unhome", joint);
 	if (retval < 0) return retval;
-	retval =  hal_pin_bit_newf(HAL_IN, &(halui_data->joint_nr_select[joint]), comp_id, "halui.joint.%d.select", joint);
+	retval =  hal_pin_bit_newf(HAL_IN, &(halui_data->joint_nr_select[joint]), comp_id, "halmqui.joint.%d.select", joint);
 	if (retval < 0) return retval;
-	retval =  hal_pin_bit_newf(HAL_IN, &(halui_data->jjog_plus[joint]), comp_id, "halui.joint.%d.plus", joint);
+	retval =  hal_pin_bit_newf(HAL_IN, &(halui_data->jjog_plus[joint]), comp_id, "halmqui.joint.%d.plus", joint);
 	if (retval < 0) return retval;
-	retval =  hal_pin_bit_newf(HAL_IN, &(halui_data->jjog_minus[joint]), comp_id, "halui.joint.%d.minus", joint);
+	retval =  hal_pin_bit_newf(HAL_IN, &(halui_data->jjog_minus[joint]), comp_id, "halmqui.joint.%d.minus", joint);
 	if (retval < 0) return retval;
-	retval =  hal_pin_float_newf(HAL_IN, &(halui_data->jjog_analog[joint]), comp_id, "halui.joint.%d.analog", joint);
+	retval =  hal_pin_float_newf(HAL_IN, &(halui_data->jjog_analog[joint]), comp_id, "halmqui.joint.%d.analog", joint);
 	if (retval < 0) return retval;
-	retval =  hal_pin_float_newf(HAL_IN, &(halui_data->jjog_increment[joint]), comp_id, "halui.joint.%d.increment", joint);
+	retval =  hal_pin_float_newf(HAL_IN, &(halui_data->jjog_increment[joint]), comp_id, "halmqui.joint.%d.increment", joint);
 	if (retval < 0) return retval;
-	retval =  hal_pin_bit_newf(HAL_IN, &(halui_data->jjog_increment_plus[joint]), comp_id, "halui.joint.%d.increment-plus", joint);
+	retval =  hal_pin_bit_newf(HAL_IN, &(halui_data->jjog_increment_plus[joint]), comp_id, "halumqi.joint.%d.increment-plus", joint);
 	if (retval < 0) return retval;
-	retval =  hal_pin_bit_newf(HAL_IN, &(halui_data->jjog_increment_minus[joint]), comp_id, "halui.joint.%d.increment-minus", joint);
+	retval =  hal_pin_bit_newf(HAL_IN, &(halui_data->jjog_increment_minus[joint]), comp_id, "halmqui.joint.%d.increment-minus", joint);
 	if (retval < 0) return retval;
     }
 
     for (axis_num = 0; axis_num < EMCMOT_MAX_AXIS; axis_num++) {
         char c = "xyzabcuvw"[axis_num];
-	retval =  hal_pin_bit_newf(HAL_IN, &(halui_data->axis_nr_select[axis_num]), comp_id, "halui.axis.%c.select", c);
+	retval =  hal_pin_bit_newf(HAL_IN, &(halui_data->axis_nr_select[axis_num]), comp_id, "halmqui.axis.%c.select", c);
 	if (retval < 0) return retval;
-	retval =  hal_pin_bit_newf(HAL_IN, &(halui_data->ajog_plus[axis_num]), comp_id, "halui.axis.%c.plus", c);
+	retval =  hal_pin_bit_newf(HAL_IN, &(halui_data->ajog_plus[axis_num]), comp_id, "halmqui.axis.%c.plus", c);
 	if (retval < 0) return retval;
-	retval =  hal_pin_bit_newf(HAL_IN, &(halui_data->ajog_minus[axis_num]), comp_id, "halui.axis.%c.minus", c);
+	retval =  hal_pin_bit_newf(HAL_IN, &(halui_data->ajog_minus[axis_num]), comp_id, "halmqui.axis.%c.minus", c);
 	if (retval < 0) return retval;
-	retval =  hal_pin_float_newf(HAL_IN, &(halui_data->ajog_analog[axis_num]), comp_id, "halui.axis.%c.analog", c);
+	retval =  hal_pin_float_newf(HAL_IN, &(halui_data->ajog_analog[axis_num]), comp_id, "halmqui.axis.%c.analog", c);
 	if (retval < 0) return retval;
-	retval =  hal_pin_float_newf(HAL_IN, &(halui_data->ajog_increment[axis_num]), comp_id, "halui.axis.%c.increment", c);
+	retval =  hal_pin_float_newf(HAL_IN, &(halui_data->ajog_increment[axis_num]), comp_id, "halmqui.axis.%c.increment", c);
 	if (retval < 0) return retval;
-	retval =  hal_pin_bit_newf(HAL_IN, &(halui_data->ajog_increment_plus[axis_num]), comp_id, "halui.axis.%c.increment-plus", c);
+	retval =  hal_pin_bit_newf(HAL_IN, &(halui_data->ajog_increment_plus[axis_num]), comp_id, "halmqui.axis.%c.increment-plus", c);
 	if (retval < 0) return retval;
-	retval =  hal_pin_bit_newf(HAL_IN, &(halui_data->ajog_increment_minus[axis_num]), comp_id, "halui.axis.%c.increment-minus", c);
+	retval =  hal_pin_bit_newf(HAL_IN, &(halui_data->ajog_increment_minus[axis_num]), comp_id, "halmqui.axis.%c.increment-minus", c);
 	if (retval < 0) return retval;
     }
 
-    retval =  hal_pin_bit_newf(HAL_IN, &(halui_data->joint_home[num_joints]), comp_id, "halui.joint.selected.home");
+    retval =  hal_pin_bit_newf(HAL_IN, &(halui_data->joint_home[num_joints]), comp_id, "halmqui.joint.selected.home");
     if (retval < 0) return retval;
-    retval =  hal_pin_bit_newf(HAL_IN, &(halui_data->joint_unhome[num_joints]), comp_id, "halui.joint.selected.unhome");
+    retval =  hal_pin_bit_newf(HAL_IN, &(halui_data->joint_unhome[num_joints]), comp_id, "halmqui.joint.selected.unhome");
     if (retval < 0) return retval;
-    retval =  hal_pin_bit_newf(HAL_IN, &(halui_data->jjog_plus[num_joints]), comp_id, "halui.joint.selected.plus");
+    retval =  hal_pin_bit_newf(HAL_IN, &(halui_data->jjog_plus[num_joints]), comp_id, "halmqui.joint.selected.plus");
     if (retval < 0) return retval;
-    retval =  hal_pin_bit_newf(HAL_IN, &(halui_data->jjog_minus[num_joints]), comp_id, "halui.joint.selected.minus");
+    retval =  hal_pin_bit_newf(HAL_IN, &(halui_data->jjog_minus[num_joints]), comp_id, "halmqui.joint.selected.minus");
     if (retval < 0) return retval;
-    retval =  hal_pin_float_newf(HAL_IN, &(halui_data->jjog_increment[num_joints]), comp_id, "halui.joint.selected.increment");
+    retval =  hal_pin_float_newf(HAL_IN, &(halui_data->jjog_increment[num_joints]), comp_id, "halmqui.joint.selected.increment");
     if (retval < 0) return retval;
-    retval =  hal_pin_bit_newf(HAL_IN, &(halui_data->jjog_increment_plus[num_joints]), comp_id, "halui.joint.selected.increment-plus");
+    retval =  hal_pin_bit_newf(HAL_IN, &(halui_data->jjog_increment_plus[num_joints]), comp_id, "halmqui.joint.selected.increment-plus");
     if (retval < 0) return retval;
-    retval =  hal_pin_bit_newf(HAL_IN, &(halui_data->jjog_increment_minus[num_joints]), comp_id, "halui.joint.selected.increment-minus");
+    retval =  hal_pin_bit_newf(HAL_IN, &(halui_data->jjog_increment_minus[num_joints]), comp_id, "halmqui.joint.selected.increment-minus");
     if (retval < 0) return retval;
-    retval =  hal_pin_bit_newf(HAL_IN, &(halui_data->ajog_plus[EMCMOT_MAX_AXIS]), comp_id, "halui.axis.selected.plus");
+    retval =  hal_pin_bit_newf(HAL_IN, &(halui_data->ajog_plus[EMCMOT_MAX_AXIS]), comp_id, "halmqui.axis.selected.plus");
     if (retval < 0) return retval;
-    retval =  hal_pin_bit_newf(HAL_IN, &(halui_data->ajog_minus[EMCMOT_MAX_AXIS]), comp_id, "halui.axis.selected.minus");
+    retval =  hal_pin_bit_newf(HAL_IN, &(halui_data->ajog_minus[EMCMOT_MAX_AXIS]), comp_id, "halmqui.axis.selected.minus");
     if (retval < 0) return retval;
-    retval =  hal_pin_float_newf(HAL_IN, &(halui_data->ajog_increment[EMCMOT_MAX_AXIS]), comp_id, "halui.axis.selected.increment");
+    retval =  hal_pin_float_newf(HAL_IN, &(halui_data->ajog_increment[EMCMOT_MAX_AXIS]), comp_id, "halmqui.axis.selected.increment");
     if (retval < 0) return retval;
-    retval =  hal_pin_bit_newf(HAL_IN, &(halui_data->ajog_increment_plus[EMCMOT_MAX_AXIS]), comp_id, "halui.axis.selected.increment-plus");
+    retval =  hal_pin_bit_newf(HAL_IN, &(halui_data->ajog_increment_plus[EMCMOT_MAX_AXIS]), comp_id, "halmqui.axis.selected.increment-plus");
     if (retval < 0) return retval;
-    retval =  hal_pin_bit_newf(HAL_IN, &(halui_data->ajog_increment_minus[EMCMOT_MAX_AXIS]), comp_id, "halui.axis.selected.increment-minus");
-    if (retval < 0) return retval;
-
-    retval = halui_export_pin_IN_float(&(halui_data->jjog_speed), "halui.joint.jog-speed");
-    if (retval < 0) return retval;
-    retval = halui_export_pin_IN_float(&(halui_data->jjog_deadband), "halui.joint.jog-deadband");
+    retval =  hal_pin_bit_newf(HAL_IN, &(halui_data->ajog_increment_minus[EMCMOT_MAX_AXIS]), comp_id, "halmqui.axis.selected.increment-minus");
     if (retval < 0) return retval;
 
-    retval = halui_export_pin_IN_float(&(halui_data->ajog_speed), "halui.axis.jog-speed");
+    retval = halui_export_pin_IN_float(&(halui_data->jjog_speed), "halmqui.joint.jog-speed");
     if (retval < 0) return retval;
-    retval = halui_export_pin_IN_float(&(halui_data->ajog_deadband), "halui.axis.jog-deadband");
+    retval = halui_export_pin_IN_float(&(halui_data->jjog_deadband), "halmqui.joint.jog-deadband");
+    if (retval < 0) return retval;
+
+    retval = halui_export_pin_IN_float(&(halui_data->ajog_speed), "halmqui.axis.jog-speed");
+    if (retval < 0) return retval;
+    retval = halui_export_pin_IN_float(&(halui_data->ajog_deadband), "halmqui.axis.jog-deadband");
     if (retval < 0) return retval;
 
     for (int n=0; n<num_mdi_commands; n++) {
-        retval = hal_pin_bit_newf(HAL_IN, &(halui_data->mdi_commands[n]), comp_id, "halui.mdi-command-%02d", n);
+        retval = hal_pin_bit_newf(HAL_IN, &(halui_data->mdi_commands[n]), comp_id, "halmqui.mdi-command-%02d", n);
         if (retval < 0) return retval;
     }
 
@@ -2400,6 +2409,12 @@ static void modify_hal_pins()
 
 int main(int argc, char *argv[])
 {
+    if(MQTTCLIENT_SUCCESS !=mq_connect()) {
+        rcs_print_error("MQ init failed\n");
+        exit(1);
+    }
+printf("MQconnected\n");
+
     // process command line args
     if (0 != emcGetArgs(argc, argv)) {
 	rcs_print_error("error in argument list\n");
