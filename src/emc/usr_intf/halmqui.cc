@@ -1,5 +1,5 @@
 /********************************************************************
-* Description: halui.cc
+*  Description: halui.cc
 *   HAL User-Interface component.
 *   This file exports various UI related hal pins, and communicates
 *   with EMC through NML messages
