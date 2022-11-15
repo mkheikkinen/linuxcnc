@@ -1,1 +1,0 @@
-halcmd -f halmqui.hal
