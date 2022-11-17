@@ -14,6 +14,14 @@
 * Copyright (c) 2006 All rights reserved.
 *
 * Last change:
+*
+* ****
+* MQ - Mika Heikkinen
+* 
+* sudo vim /etc/mosquitto/mosquitto.conf 
+* ADD:
+* allow_anonymous true
+* listener 1883 0.0.0.0
 
 * start broker daemon: mosquitto -d
 * listen link status:mosquitto_sub -d -t STATUS
@@ -300,7 +308,9 @@ int mq_connect()
 
     char sTopic[]="STATUS";
     char sMessage[]="HALMQUI INIT";
-    
+   
+    printf("mq_connect\n");
+ 
     MQTTClient_create(
 	&client, 
 	ADDRESS, 
@@ -336,7 +346,7 @@ void mq_disconnect()
 
     printf("mq_disconnect\n");
 
-    MQTTClient_disconnect(client, 10000);
+    MQTTClient_disconnect(client, 100);
     MQTTClient_destroy(&client);
 }
 
@@ -344,6 +354,7 @@ void mq_disconnect()
 int mq_send(const char* sTopic, const char *sMesg)
 {
     int rc;
+    int iRetry=10;
     MQTTClient_message pubmsg = MQTTClient_message_initializer;
     MQTTClient_deliveryToken token;
 
@@ -354,23 +365,86 @@ int mq_send(const char* sTopic, const char *sMesg)
     pubmsg.qos = QOS;
     pubmsg.retained = 0;
 
-    MQTTClient_publishMessage(client, sTopic, &pubmsg, &token);
+       while(iRetry-->0) {
+
+    rc = MQTTClient_publishMessage(client, sTopic, &pubmsg, &token);
+    if (rc != MQTTCLIENT_SUCCESS) {
+        printf("MQTTClient_publishMessage Failed, return code %d\n", rc);
+        
+    }
 
     //printf("Waiting for up to %d seconds for publication of %s\n"
     //        "on topic %s for client with ClientID: %s\n",
     //        (int)(TIMEOUT/1000), PAYLOAD, TOPIC, CLIENTID);
-/*
+
     rc = MQTTClient_waitForCompletion(client, token, TIMEOUT);
+    if(MQTTCLIENT_DISCONNECTED==rc) {
+        mq_disconnect();
+        mq_connect();
+        sleep(100);
+        continue;
+    }
     if(MQTTCLIENT_SUCCESS==rc) {
         printf("Message with delivery token %d delivered\n", token);
     } else {
        printf("MQTTClient_waitForCompletion failed with:%d\n", rc);
+       exit(-1);
     }
-*/
+      break;
+    }
+
     return rc;
 }
 
 
+int mq_send_pos(const char* sTopic, float x, float y, float z, float a, float b, float c, float u, float w)
+{
+
+    int rc;
+    int iRetry=10;
+    MQTTClient_message pubmsg = MQTTClient_message_initializer;
+    MQTTClient_deliveryToken token;
+    char sMesg[200]="";
+
+    sprintf(sMesg, "%f,%f,%f,%f,%f,%f,%f,%f", x, y, z, a, b, c, u, w);
+
+    printf("mq_send:%s:%s\n", sTopic, sMesg);
+
+    pubmsg.payload = (void*)sMesg;
+    pubmsg.payloadlen = strlen(sMesg);
+    pubmsg.qos = QOS;
+    pubmsg.retained = 0;
+
+       while(iRetry-->0) {
+
+    rc = MQTTClient_publishMessage(client, sTopic, &pubmsg, &token);
+    if (rc != MQTTCLIENT_SUCCESS) {
+        printf("MQTTClient_publishMessage Failed, return code %d\n", rc);
+
+    }
+
+    //printf("Waiting for up to %d seconds for publication of %s\n"
+    //        "on topic %s for client with ClientID: %s\n",
+    //        (int)(TIMEOUT/1000), PAYLOAD, TOPIC, CLIENTID);
+
+    rc = MQTTClient_waitForCompletion(client, token, TIMEOUT);
+    if(MQTTCLIENT_DISCONNECTED==rc) {
+        mq_disconnect();
+        mq_connect();
+        sleep(100);
+        continue;
+    }
+    if(MQTTCLIENT_SUCCESS==rc) {
+        printf("Message with delivery token %d delivered\n", token);
+    } else {
+       printf("MQTTClient_waitForCompletion failed with:%d\n", rc);
+       exit(-1);
+    }
+      break;
+    }
+
+    return rc;
+}
 
 
 static void quit(int sig)
@@ -520,7 +594,7 @@ static int updateStatus()
 }
 
 
-#define EMC_COMMAND_DELAY   0.25	// how long to sleep between checks
+#define EMC_COMMAND_DELAY   0.1	// how long to sleep between checks
 
 static int emcCommandWaitDone()
 {
@@ -2222,6 +2296,10 @@ static void modify_hal_pins()
     
     static int MQ_EMC_STATUS_TASK_STATE=-1;
     static int MQ_EMC_STATUS_TASK_MODE=-1;
+    static int MQ_EMC_TASK_INTERP_STATE=-1;
+    static int MQ_EMC_IO_COOLANT_MIST=-1;
+    static int MQ_EMC_IO_COOLANT_FLOOD=-1;
+    static int MQ_EMC_IO_COOLANT_LUBE=-1;
 
 
     if (emcStatus->task.state == EMC_TASK_STATE_ON) {
@@ -2296,32 +2374,32 @@ static void modify_hal_pins()
     }
 
     if (emcStatus->motion.traj.mode == EMC_TRAJ_MODE_TELEOP) {
-        mq_send("EMC_TRAJ_MOD", "TELEOP");
+//        mq_send("EMC_TRAJ_MOD", "TELEOP");
 	*(halui_data->mode_is_teleop)=1;
     } else {
 	*(halui_data->mode_is_teleop)=0;
     }
 
     if (emcStatus->motion.traj.mode == EMC_TRAJ_MODE_FREE) {
-        mq_send("EMC_TRAJ_MOD", "FREE");
+//        mq_send("EMC_TRAJ_MOD", "FREE");
 	*(halui_data->mode_is_joint)=1;
     } else {
 	*(halui_data->mode_is_joint)=0;
     }
 
     if(emcStatus->task.interpState == EMC_TASK_INTERP_PAUSED){
-        mq_send("EMC_TASK_INTERP_STATE", "PAUSED");
+//        mq_send("EMC_TASK_INTERP_STATE", "PAUSED");
     }
     *(halui_data->program_is_paused) = emcStatus->task.interpState == EMC_TASK_INTERP_PAUSED;
 
     if(emcStatus->task.interpState == EMC_TASK_INTERP_READING){
-        mq_send("EMC_TASK_INTERP_STATE", "READING");
+//        mq_send("EMC_TASK_INTERP_STATE", "READING");
     }
     if(emcStatus->task.interpState == EMC_TASK_INTERP_WAITING){
-        mq_send("EMC_TASK_INTERP_STATE", "WAITING");
+//        mq_send("EMC_TASK_INTERP_STATE", "WAITING");
     }
     if(emcStatus->task.interpState == EMC_TASK_INTERP_IDLE){
-        mq_send("EMC_TASK_INTERP_STATE", "IDLE");
+//        mq_send("EMC_TASK_INTERP_STATE", "IDLE");
     }
     *(halui_data->program_is_running) = emcStatus->task.interpState == EMC_TASK_INTERP_READING ||
                                         emcStatus->task.interpState == EMC_TASK_INTERP_WAITING;
@@ -2329,9 +2407,9 @@ static void modify_hal_pins()
 
     *(halui_data->program_os_is_on) = emcStatus->task.optional_stop_state;
     if(emcStatus->task.optional_stop_state) {
-        mq_send("EMC_TASK_OSTOP", "1");
+//        mq_send("EMC_TASK_OSTOP", "1");
     } else {
-        mq_send("EMC_TASK_OSTOP", "0");
+//        mq_send("EMC_TASK_OSTOP", "0");
     }
 
     *(halui_data->program_bd_is_on) = emcStatus->task.block_delete_state;
@@ -2342,24 +2420,43 @@ static void modify_hal_pins()
 
     *(halui_data->mist_is_on) = emcStatus->io.coolant.mist;
     if(emcStatus->io.coolant.mist) {
-        mq_send("EMC_IO_COOLANT_MIST", "1");
+        if(MQ_EMC_IO_COOLANT_MIST!=emcStatus->io.coolant.mist) {
+                MQ_EMC_IO_COOLANT_MIST=emcStatus->io.coolant.mist;
+                mq_send("EMC_IO_COOLANT_MIST", "1");
+        }
     } else {
-        mq_send("EMC_IO_COOLANT_MIST", "1");
+        if(MQ_EMC_IO_COOLANT_MIST!=emcStatus->io.coolant.mist) {
+                MQ_EMC_IO_COOLANT_MIST=emcStatus->io.coolant.mist;
+                mq_send("EMC_IO_COOLANT_MIST", "0");
+        }
     }
 
     *(halui_data->flood_is_on) = emcStatus->io.coolant.flood;
     if(emcStatus->io.coolant.flood) {
-        mq_send("EMC_IO_COOLANT_FLOOD", "1");
+        if(MQ_EMC_IO_COOLANT_FLOOD!=emcStatus->io.coolant.flood) {
+                MQ_EMC_IO_COOLANT_FLOOD=emcStatus->io.coolant.flood;
+                mq_send("EMC_IO_COOLANT_FLOOD", "1");
+        }
     } else {
-        mq_send("EMC_IO_COOLANT_FLOOD", "0");
+        if(MQ_EMC_IO_COOLANT_FLOOD!=emcStatus->io.coolant.flood) {
+                MQ_EMC_IO_COOLANT_FLOOD=emcStatus->io.coolant.flood;
+                mq_send("EMC_IO_COOLANT_FLOOD", "0");
+        }
     }
 
     *(halui_data->lube_is_on) = emcStatus->io.lube.on;
     if(emcStatus->io.lube.on) {
-        mq_send("EMC_IO_COOLANT_LUBE", "1");
+        if(MQ_EMC_IO_COOLANT_LUBE!=emcStatus->io.lube.on) {
+                MQ_EMC_IO_COOLANT_LUBE=emcStatus->io.lube.on;
+                mq_send("EMC_IO_LUBE", "1");
+        }
     } else {
-        mq_send("EMC_IO_COOLANT_LUBE", "0");
+        if(MQ_EMC_IO_COOLANT_LUBE!=emcStatus->io.lube.on) {
+                MQ_EMC_IO_COOLANT_LUBE=emcStatus->io.lube.on;
+                mq_send("EMC_IO_LUBE", "0");
+        }
     }
+
     *(halui_data->tool_number) = emcStatus->io.tool.toolInSpindle;
     *(halui_data->tool_length_offset_x) = emcStatus->task.toolOffset.tran.x;
     *(halui_data->tool_length_offset_y) = emcStatus->task.toolOffset.tran.y;
@@ -2408,6 +2505,8 @@ static void modify_hal_pins()
 	*(halui_data->joint_override_limits[joint]) = emcStatus->motion.joint[joint].overrideLimits;
 	*(halui_data->joint_has_fault[joint]) = emcStatus->motion.joint[joint].fault;
     }
+
+    mq_send_pos("POS_CMD", emcStatus->motion.traj.position.tran.x, emcStatus->motion.traj.position.tran.y, emcStatus->motion.traj.position.tran.z, emcStatus->motion.traj.position.a, emcStatus->motion.traj.position.b, emcStatus->motion.traj.position.c, emcStatus->motion.traj.position.u, emcStatus->motion.traj.position.w);
 
     if (axis_mask & 0x0001) {
       *(halui_data->axis_pos_commanded[0]) = emcStatus->motion.traj.position.tran.x;
