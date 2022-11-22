@@ -1,0 +1,91 @@
+loadrt [KINS]KINEMATICS
+#loadrt [EMCMOT]EMCMOT servo_period_nsec=[EMCMOT]SERVO_PERIOD num_joints=[KINS]JOINTS
+loadrt [EMCMOT]EMCMOT base_period_nsec=[EMCMOT]BASE_PERIOD servo_period_nsec=[EMCMOT]SERVO_PERIOD num_joints=[KINS]JOINTS
+loadrt hostmot2
+
+# load 7c80 with sserial port
+loadrt hm2_rpspi config=" num_encoders=0 num_pwmgens=1 num_stepgens=3 sserial_port_0=11111111"
+setp    hm2_7c80.0.watchdog.timeout_ns 50000000
+
+#loadrt [EMCMOT]EMCMOT base_period_nsec=[EMCMOT]BASE_PERIOD servo_period_nsec=[EMCMOT]SERVO_PERIOD num_joints=[KINS]JOINTS
+
+loadrt estop_latch
+
+#setp    hm2_[HOSTMOT2](BOARD).0.watchdog.timeout_ns 50000000
+
+addf hm2_[HOSTMOT2](BOARD).0.read         servo-thread
+addf motion-command-handler               servo-thread
+addf motion-controller                    servo-thread
+addf hm2_[HOSTMOT2](BOARD).0.write        servo-thread
+addf estop-latch.0                        servo-thread
+
+net cposcmd joint.5.motor-pos-cmd  => hm2_[HOSTMOT2](BOARD).0.stbl.0.0.pos_cmd
+net cvelcmd joint.5.vel-cmd        => hm2_[HOSTMOT2](BOARD).0.stbl.0.0.vel_cmd
+net cposfb  joint.5.motor-pos-fb  <=  hm2_[HOSTMOT2](BOARD).0.stbl.0.0.pos_fb
+net cenable joint.5.amp-enable-out => hm2_[HOSTMOT2](BOARD).0.stbl.0.0.enable
+net cfault  joint.5.amp-fault-in  <=  hm2_[HOSTMOT2](BOARD).0.stbl.0.0.fault
+#net xindex  joint.5.index-enable  <=> hm2_[HOSTMOT2](BOARD).0.stbl.0.0.index_enable
+
+
+
+# load 6 differentiators (for velocity and accel signals
+loadrt ddt names=ddt_x,ddt_xv,ddt_y,ddt_yv,ddt_z,ddt_zv,ddt_a,ddt_av,ddt_b,ddt_bv
+
+# load additional blocks
+loadrt hypot names=vel_xy,vel_xyz,vel_a,vel_b
+
+# add motion controller functions to servo thread
+#addf motion-command-handler servo-thread
+#addf motion-controller servo-thread
+# link the differentiator functions into the code
+addf ddt_x servo-thread
+addf ddt_xv servo-thread
+addf ddt_y servo-thread
+addf ddt_yv servo-thread
+addf ddt_z servo-thread
+addf ddt_zv servo-thread
+
+addf ddt_a servo-thread
+addf ddt_av servo-thread
+
+addf ddt_b servo-thread
+addf ddt_bv servo-thread
+
+addf vel_xy servo-thread
+addf vel_xyz servo-thread
+
+# create HAL signals for position commands from motion module
+# loop position commands back to motion module feedback
+net Xpos joint.0.motor-pos-cmd => joint.0.motor-pos-fb ddt_x.in
+net Ypos joint.1.motor-pos-cmd => joint.1.motor-pos-fb ddt_y.in
+net Zpos joint.2.motor-pos-cmd => joint.2.motor-pos-fb ddt_z.in
+net Apos joint.3.motor-pos-cmd => joint.3.motor-pos-fb ddt_a.in
+net Bpos joint.4.motor-pos-cmd => joint.4.motor-pos-fb ddt_b.in
+
+# send the position commands thru differentiators to
+# generate velocity and accel signals
+net Xvel ddt_x.out => ddt_xv.in vel_xy.in0
+net Xacc <= ddt_xv.out
+net Yvel ddt_y.out => ddt_yv.in vel_xy.in1
+net Yacc <= ddt_yv.out
+net Zvel ddt_z.out => ddt_zv.in vel_xyz.in0
+net Zacc <= ddt_zv.out
+
+net Avel ddt_a.out => ddt_av.in vel_a.in0
+net Aacc <= ddt_av.out
+
+net Bvel ddt_b.out => ddt_bv.in vel_b.in0
+net Bacc <= ddt_bv.out
+
+
+# Cartesian 2- and 3-axis velocities
+net XYvel vel_xy.out => vel_xyz.in1
+net XYZvel <= vel_xyz.out
+
+# estop loopback
+net estop-loop iocontrol.0.user-enable-out iocontrol.0.emc-enable-in
+
+# create signals for tool loading loopback
+net tool-prep-loop iocontrol.0.tool-prepare iocontrol.0.tool-prepared
+net tool-change-loop iocontrol.0.tool-change iocontrol.0.tool-changed
+
