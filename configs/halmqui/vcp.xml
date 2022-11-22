@@ -292,65 +292,8 @@
 </labelframe>
 
 <tabs>
-    <names>["Axis X", "Axis Y", "Axis Z"]</names>
+    <names>["Axis Y", "Axis Z", "Axis C"]</names>
     <vbox> <!-- Axis X -->
-	<hbox>
-	    <labelframe text="home">
-	    <vbox>
-    		<button>
-            	    <halpin>"x.home"</halpin>
-            	    <text>"home"</text> 
-            	    <justify>"center"</justify>
-		</button>
-		<led>
-		    <halpin>"x.is-homed"</halpin>
-		    <size>25</size>
-		    <on_color>"green"</on_color>
-		    <off_color>"black"</off_color>
-		</led>
-	    </vbox>
-	    </labelframe>
-	    <labelframe text="status">
-	    <vbox>
-		<hbox>
-		    <led><halpin>"x.min-hard"</halpin><size>10</size><on_color>"red"</on_color><off_color>"green"</off_color></led>
-		    <label><text>"min hard"</text><font>("Arial",5)</font></label>
-		</hbox>		    
-		<hbox>
-		    <led><halpin>"x.min-soft"</halpin><size>10</size><on_color>"red"</on_color><off_color>"green"</off_color></led>
-		    <label><text>"min soft"</text><font>("Arial",5)</font></label>
-		</hbox>		    
-		<hbox>
-		    <led><halpin>"x.max-soft"</halpin><size>10</size><on_color>"red"</on_color><off_color>"green"</off_color></led>
-		    <label><text>"max soft"</text><font>("Arial",5)</font></label>
-		</hbox>
-		<hbox>
-		    <led><halpin>"x.max-hard"</halpin><size>10</size><on_color>"red"</on_color><off_color>"green"</off_color></led>
-		    <label><text>"max hard"</text><font>("Arial",5)</font></label>
-		</hbox>		    
-		<hbox>
-		    <led><halpin>"x.has-fault"</halpin><size>10</size><on_color>"red"</on_color><off_color>"black"</off_color></led>
-		    <label><text>"error"</text><font>("Arial",5)</font></label>
-		</hbox>		    
-	    </vbox>
-	    </labelframe>
-	    <labelframe text="jog">
-	    <vbox>
-    		<button>
-            	    <halpin>"jog-x+"</halpin>
-            	    <text>"X +"</text> 
-            	    <justify>"center"</justify>
-    		</button>
-    		<button>
-            	    <halpin>"jog-x-"</halpin>
-            	    <text>"X -"</text> 
-            	    <justify>"center"</justify>
-		</button>
-	    </vbox>
-	    </labelframe>
-	</hbox>
-    </vbox>
-    <vbox> <!-- Axis Y -->
 	<hbox>
 	    <labelframe text="home">
 	    <vbox>
@@ -458,6 +401,63 @@
     		<button>
             	    <halpin>"jog-z-"</halpin>
             	    <text>"Z -"</text> 
+            	    <justify>"center"</justify>
+		</button>
+	    </vbox>
+	    </labelframe>
+	</hbox>
+    </vbox>
+    <vbox> <!-- Axis C -->
+	<hbox>
+	    <labelframe text="home">
+	    <vbox>
+    		<button>
+            	    <halpin>"c.home"</halpin>
+            	    <text>"home"</text> 
+            	    <justify>"center"</justify>
+		</button>
+		<led>
+		    <halpin>"c.is-homed"</halpin>
+		    <size>25</size>
+		    <on_color>"green"</on_color>
+		    <off_color>"black"</off_color>
+		</led>
+	    </vbox>
+	    </labelframe>
+	    <labelframe text="status">
+	    <vbox>
+		<hbox>
+		    <led><halpin>"c.min-hard"</halpin><size>10</size><on_color>"red"</on_color><off_color>"green"</off_color></led>
+		    <label><text>"min hard"</text><font>("Arial",5)</font></label>
+		</hbox>		    
+		<hbox>
+		    <led><halpin>"c.min-soft"</halpin><size>10</size><on_color>"red"</on_color><off_color>"green"</off_color></led>
+		    <label><text>"min soft"</text><font>("Arial",5)</font></label>
+		</hbox>		    
+		<hbox>
+		    <led><halpin>"c.max-soft"</halpin><size>10</size><on_color>"red"</on_color><off_color>"green"</off_color></led>
+		    <label><text>"max soft"</text><font>("Arial",5)</font></label>
+		</hbox>
+		<hbox>
+		    <led><halpin>"c.max-hard"</halpin><size>10</size><on_color>"red"</on_color><off_color>"green"</off_color></led>
+		    <label><text>"max hard"</text><font>("Arial",5)</font></label>
+		</hbox>		    
+		<hbox>
+		    <led><halpin>"c.has-fault"</halpin><size>10</size><on_color>"red"</on_color><off_color>"black"</off_color></led>
+		    <label><text>"error"</text><font>("Arial",5)</font></label>
+		</hbox>		    
+	    </vbox>
+	    </labelframe>
+	    <labelframe text="jog">
+	    <vbox>
+    		<button>
+            	    <halpin>"jog-c+"</halpin>
+            	    <text>"C +"</text> 
+            	    <justify>"center"</justify>
+    		</button>
+    		<button>
+            	    <halpin>"jog-c-"</halpin>
+            	    <text>"C -"</text> 
             	    <justify>"center"</justify>
 		</button>
 	    </vbox>
