@@ -19,12 +19,12 @@ addf motion-controller                    servo-thread
 addf hm2_[HOSTMOT2](BOARD).0.write        servo-thread
 addf estop-latch.0                        servo-thread
 
-net cposcmd joint.5.motor-pos-cmd  => hm2_[HOSTMOT2](BOARD).0.stbl.0.0.pos_cmd
-net cvelcmd joint.5.vel-cmd        => hm2_[HOSTMOT2](BOARD).0.stbl.0.0.vel_cmd
-net cposfb  joint.5.motor-pos-fb  <=  hm2_[HOSTMOT2](BOARD).0.stbl.0.0.pos_fb
-net cenable joint.5.amp-enable-out => hm2_[HOSTMOT2](BOARD).0.stbl.0.0.enable
-net cfault  joint.5.amp-fault-in  <=  hm2_[HOSTMOT2](BOARD).0.stbl.0.0.fault
-#net xindex  joint.5.index-enable  <=> hm2_[HOSTMOT2](BOARD).0.stbl.0.0.index_enable
+net cposcmd joint.1.motor-pos-cmd  => hm2_[HOSTMOT2](BOARD).0.stbl.0.0.pos_cmd
+net cvelcmd joint.1.vel-cmd        => hm2_[HOSTMOT2](BOARD).0.stbl.0.0.vel_cmd
+net cposfb  joint.1.motor-pos-fb  <=  hm2_[HOSTMOT2](BOARD).0.stbl.0.0.pos_fb
+net cenable joint.1.amp-enable-out => hm2_[HOSTMOT2](BOARD).0.stbl.0.0.enable
+net cfault  joint.1.amp-fault-in  <=  hm2_[HOSTMOT2](BOARD).0.stbl.0.0.fault
+#net xindex  joint.1.index-enable  <=> hm2_[HOSTMOT2](BOARD).0.stbl.0.0.index_enable
 
 net spindle-is-on      => hm2_7c80.0.stbl.0.0.out-00
 net spindle-is-forward    => hm2_7c80.0.stbl.0.0.out-01
@@ -59,17 +59,18 @@ addf vel_xyz servo-thread
 # create HAL signals for position commands from motion module
 # loop position commands back to motion module feedback
 net Xpos joint.0.motor-pos-cmd => joint.0.motor-pos-fb ddt_x.in
-net Ypos joint.1.motor-pos-cmd => joint.1.motor-pos-fb ddt_y.in
+#net Ypos joint.1.motor-pos-cmd => joint.1.motor-pos-fb ddt_y.in
 net Zpos joint.2.motor-pos-cmd => joint.2.motor-pos-fb ddt_z.in
 net Apos joint.3.motor-pos-cmd => joint.3.motor-pos-fb ddt_a.in
 net Bpos joint.4.motor-pos-cmd => joint.4.motor-pos-fb ddt_b.in
+
 
 # send the position commands thru differentiators to
 # generate velocity and accel signals
 net Xvel ddt_x.out => ddt_xv.in vel_xy.in0
 net Xacc <= ddt_xv.out
-net Yvel ddt_y.out => ddt_yv.in vel_xy.in1
-net Yacc <= ddt_yv.out
+#net Yvel ddt_y.out => ddt_yv.in vel_xy.in1
+#net Yacc <= ddt_yv.out
 net Zvel ddt_z.out => ddt_zv.in vel_xyz.in0
 net Zacc <= ddt_zv.out
 
