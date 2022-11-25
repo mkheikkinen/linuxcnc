@@ -292,8 +292,65 @@
 </labelframe>
 
 <tabs>
-    <names>["Axis Y", "Axis Z", "Axis C"]</names>
+    <names>["Axis X", "Axis Y", "Axis Z", "Axis A", "Axis B", "Axis C"]</names>
     <vbox> <!-- Axis X -->
+        <hbox>
+            <labelframe text="home">
+            <vbox>
+                <button>
+                    <halpin>"x.home"</halpin>
+                    <text>"home"</text>
+                    <justify>"center"</justify>
+                </button>
+                <led>
+                    <halpin>"x.is-homed"</halpin>
+                    <size>25</size>
+                    <on_color>"green"</on_color>
+                    <off_color>"black"</off_color>
+                </led>
+            </vbox>
+            </labelframe>
+            <labelframe text="status">
+            <vbox>
+                <hbox>
+                    <led><halpin>"x.min-hard"</halpin><size>10</size><on_color>"red"</on_color><off_color>"green"</off_color></led>
+                    <label><text>"min hard"</text><font>("Arial",5)</font></label>
+                </hbox>
+                <hbox>
+                    <led><halpin>"x.min-soft"</halpin><size>10</size><on_color>"red"</on_color><off_color>"green"</off_color></led>
+                    <label><text>"min soft"</text><font>("Arial",5)</font></label>
+                </hbox>
+                <hbox>
+                    <led><halpin>"x.max-soft"</halpin><size>10</size><on_color>"red"</on_color><off_color>"green"</off_color></led>
+                    <label><text>"max soft"</text><font>("Arial",5)</font></label>
+                </hbox>
+                <hbox>
+                    <led><halpin>"x.max-hard"</halpin><size>10</size><on_color>"red"</on_color><off_color>"green"</off_color></led>
+                    <label><text>"max hard"</text><font>("Arial",5)</font></label>
+                </hbox>
+                <hbox>
+                    <led><halpin>"x.has-fault"</halpin><size>10</size><on_color>"red"</on_color><off_color>"black"</off_color></led>
+                    <label><text>"error"</text><font>("Arial",5)</font></label>
+                </hbox>
+            </vbox>
+            </labelframe>
+            <labelframe text="jog">
+            <vbox>
+                <button>
+                    <halpin>"jog-x+"</halpin>
+                    <text>"X +"</text>
+                    <justify>"center"</justify>
+                </button>
+                <button>
+                    <halpin>"jog-x-"</halpin>
+                    <text>"X -"</text>
+                    <justify>"center"</justify>
+                </button>
+            </vbox>
+            </labelframe>
+        </hbox>
+    </vbox>
+    <vbox> <!-- Axis Y -->
 	<hbox>
 	    <labelframe text="home">
 	    <vbox>
@@ -407,6 +464,120 @@
 	    </labelframe>
 	</hbox>
     </vbox>
+    <vbox> <!-- Axis A -->
+        <hbox>
+            <labelframe text="home">
+            <vbox>
+                <button>
+                    <halpin>"a.home"</halpin>
+                    <text>"home"</text>
+                    <justify>"center"</justify>
+                </button>
+                <led>
+                    <halpin>"a.is-homed"</halpin>
+                    <size>25</size>
+                    <on_color>"green"</on_color>
+                    <off_color>"black"</off_color>
+                </led>
+            </vbox>
+            </labelframe>
+            <labelframe text="status">
+            <vbox>
+                <hbox>
+                    <led><halpin>"a.min-hard"</halpin><size>10</size><on_color>"red"</on_color><off_color>"green"</off_color></led>
+                    <label><text>"min hard"</text><font>("Arial",5)</font></label>
+                </hbox>
+                <hbox>
+                    <led><halpin>"a.min-soft"</halpin><size>10</size><on_color>"red"</on_color><off_color>"green"</off_color></led>
+                    <label><text>"min soft"</text><font>("Arial",5)</font></label>
+                </hbox>
+                <hbox>
+                    <led><halpin>"a.max-soft"</halpin><size>10</size><on_color>"red"</on_color><off_color>"green"</off_color></led>
+                    <label><text>"max soft"</text><font>("Arial",5)</font></label>
+                </hbox>
+                <hbox>
+                    <led><halpin>"a.max-hard"</halpin><size>10</size><on_color>"red"</on_color><off_color>"green"</off_color></led>
+                    <label><text>"max hard"</text><font>("Arial",5)</font></label>
+                </hbox>
+                <hbox>
+                    <led><halpin>"a.has-fault"</halpin><size>10</size><on_color>"red"</on_color><off_color>"black"</off_color></led>
+                    <label><text>"error"</text><font>("Arial",5)</font></label>
+                </hbox>
+            </vbox>
+            </labelframe>
+            <labelframe text="jog">
+            <vbox>
+                <button>
+                    <halpin>"jog-a+"</halpin>
+                    <text>"A +"</text>
+                    <justify>"center"</justify>
+                </button>
+                <button>
+                    <halpin>"jog-a-"</halpin>
+                    <text>"A -"</text>
+                    <justify>"center"</justify>
+                </button>
+            </vbox>
+            </labelframe>
+        </hbox>
+    </vbox>
+    <vbox> <!-- Axis B -->
+        <hbox>
+            <labelframe text="home">
+            <vbox>
+                <button>
+                    <halpin>"b.home"</halpin>
+                    <text>"home"</text>
+                    <justify>"center"</justify>
+                </button>
+                <led>
+                    <halpin>"b.is-homed"</halpin>
+                    <size>25</size>
+                    <on_color>"green"</on_color>
+                    <off_color>"black"</off_color>
+                </led>
+            </vbox>
+            </labelframe>
+            <labelframe text="status">
+            <vbox>
+                <hbox>
+                    <led><halpin>"b.min-hard"</halpin><size>10</size><on_color>"red"</on_color><off_color>"green"</off_color></led>
+                    <label><text>"min hard"</text><font>("Arial",5)</font></label>
+                </hbox>
+                <hbox>
+                    <led><halpin>"b.min-soft"</halpin><size>10</size><on_color>"red"</on_color><off_color>"green"</off_color></led>
+                    <label><text>"min soft"</text><font>("Arial",5)</font></label>
+                </hbox>
+                <hbox>
+                    <led><halpin>"b.max-soft"</halpin><size>10</size><on_color>"red"</on_color><off_color>"green"</off_color></led>
+                    <label><text>"max soft"</text><font>("Arial",5)</font></label>
+                </hbox>
+                <hbox>
+                    <led><halpin>"b.max-hard"</halpin><size>10</size><on_color>"red"</on_color><off_color>"green"</off_color></led>
+                    <label><text>"max hard"</text><font>("Arial",5)</font></label>
+                </hbox>
+                <hbox>
+                    <led><halpin>"b.has-fault"</halpin><size>10</size><on_color>"red"</on_color><off_color>"black"</off_color></led>
+                    <label><text>"error"</text><font>("Arial",5)</font></label>
+                </hbox>
+            </vbox>
+            </labelframe>
+            <labelframe text="jog">
+            <vbox>
+                <button>
+                    <halpin>"jog-b+"</halpin>
+                    <text>"B +"</text>
+                    <justify>"center"</justify>
+                </button>
+                <button>
+                    <halpin>"jog-b-"</halpin>
+                    <text>"B -"</text>
+                    <justify>"center"</justify>
+                </button>
+            </vbox>
+            </labelframe>
+        </hbox>
+    </vbox>>
     <vbox> <!-- Axis C -->
 	<hbox>
 	    <labelframe text="home">

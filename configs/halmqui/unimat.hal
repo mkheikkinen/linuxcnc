@@ -4,7 +4,7 @@ loadrt [EMCMOT]EMCMOT base_period_nsec=[EMCMOT]BASE_PERIOD servo_period_nsec=[EM
 loadrt hostmot2
 
 # load 7c80 with sserial port
-loadrt hm2_rpspi config=" num_encoders=0 num_pwmgens=1 num_stepgens=3 sserial_port_0=11111111"
+loadrt hm2_rpspi config=" num_encoders=0 num_pwmgens=1 num_stepgens=6 sserial_port_0=11111111"
 setp    hm2_7c80.0.watchdog.timeout_ns 50000000
 
 loadrt pid names=pid.x,pid.y,pid.y2,pid.z,pid.s
@@ -50,8 +50,8 @@ addf ddt_zv servo-thread
 addf ddt_a servo-thread
 addf ddt_av servo-thread
 
-addf ddt_b servo-thread
-addf ddt_bv servo-thread
+#addf ddt_b servo-thread
+#addf ddt_bv servo-thread
 
 addf vel_xy servo-thread
 addf vel_xyz servo-thread
@@ -62,7 +62,7 @@ net Xpos joint.0.motor-pos-cmd => joint.0.motor-pos-fb ddt_x.in
 net Ypos joint.1.motor-pos-cmd => joint.1.motor-pos-fb ddt_y.in
 net Zpos joint.2.motor-pos-cmd => joint.2.motor-pos-fb ddt_z.in
 net Apos joint.3.motor-pos-cmd => joint.3.motor-pos-fb ddt_a.in
-net Bpos joint.4.motor-pos-cmd => joint.4.motor-pos-fb ddt_b.in
+#net Bpos joint.4.motor-pos-cmd => joint.4.motor-pos-fb ddt_b.in
 
 # send the position commands thru differentiators to
 # generate velocity and accel signals
@@ -76,8 +76,8 @@ net Zacc <= ddt_zv.out
 net Avel ddt_a.out => ddt_av.in vel_a.in0
 net Aacc <= ddt_av.out
 
-net Bvel ddt_b.out => ddt_bv.in vel_b.in0
-net Bacc <= ddt_bv.out
+#inet Bvel ddt_b.out => ddt_bv.in vel_b.in0
+#net Bacc <= ddt_bv.out
 
 
 # Cartesian 2- and 3-axis velocities
@@ -90,6 +90,27 @@ net estop-loop iocontrol.0.user-enable-out iocontrol.0.emc-enable-in
 # create signals for tool loading loopback
 net tool-prep-loop iocontrol.0.tool-prepare iocontrol.0.tool-prepared
 net tool-change-loop iocontrol.0.tool-change iocontrol.0.tool-changed
+
+
+# Turret(B - axis)
+
+setp   hm2_7c80.0.stepgen.05.dirsetup        [JOINT_4]DIRSETUP
+setp   hm2_7c80.0.stepgen.05.dirhold         [JOINT_4]DIRHOLD
+setp   hm2_7c80.0.stepgen.05.steplen         [JOINT_4]STEPLEN
+setp   hm2_7c80.0.stepgen.05.stepspace       [JOINT_4]STEPSPACE
+setp   hm2_7c80.0.stepgen.05.position-scale  [JOINT_4]STEP_SCALE
+setp   hm2_7c80.0.stepgen.05.step_type        0
+setp   hm2_7c80.0.stepgen.05.control-type     1
+setp   hm2_7c80.0.stepgen.05.maxaccel         [JOINT_4]STEPGEN_MAXACCEL
+setp   hm2_7c80.0.stepgen.05.maxvel           [JOINT_4]STEPGEN_MAXVEL
+
+net b-pos-cmd    <= joint.4.motor-pos-cmd
+net b-vel-cmd    <= joint.4.vel-cmd
+net b-output     <= hm2_7c80.0.stepgen.04.velocity-cmd
+net b-pos-fb     <= hm2_7c80.0.stepgen.04.position-fb
+net b-pos-fb     => joint.4.motor-pos-fb
+net b-enable     <= joint.4.amp-enable-out
+net b-enable     => hm2_7c80.0.stepgen.04.enable
 
 
 
