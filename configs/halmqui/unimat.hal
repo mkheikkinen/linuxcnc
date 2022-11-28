@@ -33,7 +33,7 @@ net cvelcmd joint.5.vel-cmd        => hm2_[HOSTMOT2](BOARD).0.stbl.0.0.vel_cmd
 net cposfb  joint.5.motor-pos-fb  <=  hm2_[HOSTMOT2](BOARD).0.stbl.0.0.pos_fb
 net cenable joint.5.amp-enable-out => hm2_[HOSTMOT2](BOARD).0.stbl.0.0.enable
 net cfault  joint.5.amp-fault-in  <=  hm2_[HOSTMOT2](BOARD).0.stbl.0.0.fault
-#net xindex  joint.5.index-enable  <=> hm2_[HOSTMOT2](BOARD).0.stbl.0.0.index_enable
+net cindex  joint.5.index-enable  <=> hm2_[HOSTMOT2](BOARD).0.stbl.0.0.index_enable
 
 net spindle-is-on      => hm2_7c80.0.stbl.0.0.out-00
 net spindle-is-forward    => hm2_7c80.0.stbl.0.0.out-01
