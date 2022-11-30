@@ -1,0 +1,3 @@
+hm2_7c80.0.inmux.00.input-00  - turret ref(1)
+
+iocontrol.0.tool-prep-number

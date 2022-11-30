@@ -1,0 +1,46 @@
+component uniref;
+
+pin out float sin_;
+pin out float cos_;
+pin in float theta;
+
+pin in unsigned selected_tool;
+pin in bit ref_sensor;
+
+pin in bit start_change;
+pin in float pos_fb;
+
+pin out float pos_out;
+pin out bit locked;
+
+
+param r float pos_prev = 0;
+param r unsigned tool_prev = 0;
+
+param r unsigned mode = 0; // 1:referencing 2:referenced
+param r bit start_change_prev = false;
+
+function _;
+license "GPL"; // indicates GPL v2 or later
+;;
+
+#include <rtapi_math.h>
+FUNCTION(_) {
+
+	// Start toolchange
+	if(start_change_prev != start_change) {	
+		start_change_prev = start_change;
+
+		// Start referencing
+		mode = 1;
+		pos_out = pos_prev + 4; // Ask to move full round
+	} 
+
+	// homed
+	if(1==mode && ref_sensor) {
+		pos_prev = pos_fb; 	// Store actual position
+		pos_out=pos_fb; 	// stop movement
+	}
+
+	sin_ = sin(theta); cos_ = cos(theta); 
+}

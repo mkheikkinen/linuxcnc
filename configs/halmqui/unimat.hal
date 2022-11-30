@@ -144,6 +144,8 @@ net b-enable     <= joint.4.amp-enable-out
 net b-enable     => hm2_7c80.0.stepgen.04.enable
 
 
+net min-home-b <= hm2_7c80.0.inmux.00.input-00
+net min-home-b     =>  joint.4.home-sw-in
 
 # --- MACHINE-IS-ENABLED ---
 net machine-is-enabled  =>     hm2_7c80.0.ssr.00.out-01
