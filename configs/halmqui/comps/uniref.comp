@@ -1,6 +1,12 @@
 component uniref;
 
-pin in unsigned selected_tool;
+// full round : 2.4 / 6 tools = 0.4
+// lock amount 0.22
+
+pin in float tool_ref_amount=0.4;
+pin in float toold_lock_amount=0.22;
+
+pin in unsigned selected_tool=5; // 0-5
 pin in bit ref_sensor;
 
 pin in bit start_change;
@@ -9,6 +15,8 @@ pin in float pos_fb;
 pin out float pos_out;
 pin out bit locked;
 pin out bit pos_reset=false;
+
+pin out bit out_enable=false;
 
 pin out unsigned mode=0; // 1:init 2:referencing 3:referenced 4: moving to tool pos 5: locking 6: locked
 
@@ -23,12 +31,20 @@ license "GPL"; // indicates GPL v2 or later
 ;;
 
 #include <rtapi_math.h>
+
+hal_bit_t fequal(hal_float_t a, hal_float_t b)
+{
+ return fabs(a-b) < 0.01;
+}
+
 FUNCTION(_) {
 
 
         // Start toolchange
         if(0==mode && start_change) {
+		locked = false;
 		if(ref_sensor){
+			out_enable = true;
 			pos_out = pos_out + 0.3; // Ask to move off the sensor
 		} else {
 			mode=1;
@@ -42,35 +58,38 @@ FUNCTION(_) {
 
 		// Start referencing
 		mode = 2;
+		out_enable = true;
 		pos_out = pos_out + 4; // Ask to move full round
 		return;
 	} 
 
 	// homed
 	if(2==mode && ref_sensor) {
-		pos_out=pos_fb; 	// stop movement
 		mode=3; // referenced
+		//out_enable = false;
 		pos_reset=true;
+		pos_out=0;
 		return;
 	}
 
-	// referenced
-	if(3==mode) {
-		//pos_reset=true;
-		//pos_out=pos_out + (0.4 * selected_tool);
-		//mode=4;
-		return;
-	}
-	
-	// right tool position 
-	if(4==mode && (pos_fb-0.01)>pos_out) {
+        // referenced , fb reseted
+        if(3==mode && 0==pos_fb) {
+                pos_reset=false;
+                mode=4;
+		pos_out = selected_tool * tool_ref_amount;
+                return;
+        }	
+
+
+	// In right tool position, enable reverse locking 
+	if(4==mode && fequal(pos_fb, pos_out) ) {
+		pos_out = pos_out - toold_lock_amount;
 		mode=5;
 		return;
 	}
 
-	// locking
-	if(5==mode) {
-		pos_out=pos_out - 0.1;
+	// locked
+	if(5==mode && pos_fb==pos_out) {
 		mode=6;
 		locked = true;
 		return;

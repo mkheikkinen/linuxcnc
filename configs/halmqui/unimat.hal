@@ -207,3 +207,8 @@ net uniref_out uniref.0.pos-out
 
 #net turret_ref hm2_7c80.0.inmux.00.input-00
 net min-home-b uniref.0.ref-sensor
+
+unlinkp  hm2_7c80.0.stepgen.04.enable
+net uniref_out_enable hm2_7c80.0.stepgen.04.enable uniref.0.out-enable
+
+net uniref_pos_reset uniref.0.pos-reset hm2_7c80.0.stepgen.04.position-reset
