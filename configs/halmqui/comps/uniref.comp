@@ -3,13 +3,21 @@ component uniref;
 // full round : 2.4 / 6 tools = 0.4
 // lock amount 0.22
 
-pin in float tool_ref_amount=0.4;
-pin in float toold_lock_amount=0.22;
 
-pin in unsigned selected_tool=5; // 0-5
-pin in bit ref_sensor;
+pin in bit tool_prepare 	"Receives signal for tool change prepare";
+pin out bit tool_prepared         "Sends signal when tool prepared";
 
 pin in bit start_change;
+pin out bit tool_changed         "Sends signal when tool change finished";
+
+
+
+pin in float tool_ref_amount=0.4;
+pin in float toold_lock_amount=0.225;
+
+pin in signed selected_tool=5; // 0-5
+pin in bit ref_sensor;
+
 pin in float pos_fb;
 
 pin out float pos_out;
@@ -38,6 +46,13 @@ hal_bit_t fequal(hal_float_t a, hal_float_t b)
 }
 
 FUNCTION(_) {
+
+	if(tool_prepare) {
+		tool_prepared=true;
+	} else {
+		tool_prepared=false;
+	}
+
 
 
         // Start toolchange
@@ -76,7 +91,7 @@ FUNCTION(_) {
         if(3==mode && 0==pos_fb) {
                 pos_reset=false;
                 mode=4;
-		pos_out = selected_tool * tool_ref_amount;
+		pos_out = (selected_tool-1) * tool_ref_amount;
                 return;
         }	
 
@@ -89,13 +104,15 @@ FUNCTION(_) {
 	}
 
 	// locked
-	if(5==mode && pos_fb==pos_out) {
+	if(5==mode && fequal(pos_fb, pos_out)) {
 		mode=6;
 		locked = true;
+		tool_changed=true;
 		return;
 	}
 	if(6==mode && !start_change) {
 		mode=1;
+		tool_changed=false;
 		return;
 	}
 }

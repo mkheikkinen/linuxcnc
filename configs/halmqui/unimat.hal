@@ -212,3 +212,13 @@ unlinkp  hm2_7c80.0.stepgen.04.enable
 net uniref_out_enable hm2_7c80.0.stepgen.04.enable uniref.0.out-enable
 
 net uniref_pos_reset uniref.0.pos-reset hm2_7c80.0.stepgen.04.position-reset
+
+#connect toolchange signals
+#unlinkp iocontrol.0.tool-prepare 
+#unlinkp iocontrol.0.tool-prepared
+unlinkp iocontrol.0.tool-change 
+unlinkp iocontrol.0.tool-changed
+
+net uni_tool_change iocontrol.0.tool-change uniref.0.start-change
+net uni_tool_changed iocontrol.0.tool-changed uniref.0.tool-changed  
+net uni_tool_number iocontrol.0.tool-prep-number uniref.0.selected-tool
