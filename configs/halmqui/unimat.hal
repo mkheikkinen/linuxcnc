@@ -190,7 +190,12 @@ setp hm2_7c80.0.gpio.021.is_output true
 net spindle-cw  => hm2_7c80.0.gpio.020.out
 net spindle-ccw => hm2_7c80.0.gpio.021.out
 
-net spindle-output      => hm2_7c80.0.pwmgen.00.value
+#net spindle-output      => hm2_7c80.0.pwmgen.00.value
+unlinkp hm2_[HOSTMOT2](BOARD).0.stbl.0.0.vel_cmd
+net spindle_speed_put spindle.0.speed-out hm2_[HOSTMOT2](BOARD).0.stbl.0.0.vel_cmd
+
+
+
 #net spindle-enable      => hm2_7c80.0.pwmgen.00.enabl
 #net spindle-enable      => hm2_[HOSTMOT2](BOARD).0.stbl.0.0.in2
 
