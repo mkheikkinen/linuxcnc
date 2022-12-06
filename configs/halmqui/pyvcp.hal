@@ -1,5 +1,9 @@
 loadusr -W pyvcp -c pyvcp vcp.xml
 
+net spindle-speed-fb => pyvcp.spindle-speed
+net spindle-at-speed => pyvcp.spindle-at-speed
+
+
 net estop-activate       pyvcp.estop.activate       halui.estop.activate
 net estop-reset          pyvcp.estop.reset          halui.estop.reset
 net estop-is-activated   pyvcp.estop.is-activated   halui.estop.is-activated

@@ -1,0 +1,74 @@
+link pid
+link pmsm
+link res_fb0
+link jog_cmd
+link misc
+#link id_pmsm
+#link id_mot
+#link id_sys
+#link id_pid
+
+conf0.r = 3.532907
+conf0.l = 0.035118
+conf0.polecount = 3.000000
+conf0.mot_fb_offset = 2.268960
+conf0.out_rev = 1
+conf0.psi = 0.103192
+
+conf0.j = 0.000290
+conf0.o = -0.003214
+conf0.d = 0.001128
+conf0.f = 0.059596
+
+conf0.j_sys = 0.000005
+conf0.o = 0.006313
+conf0.d = 0.001353
+conf0.f = 0.053491
+
+conf0.pos_bw = 38.919426
+conf0.vel_bw = 500.000000
+conf0.vel_d = 2.123479
+
+link sserial
+sserial0.scale = 360.000000
+
+#Bypass tracking
+#sserial0.pos_fb = sserial0.pos_cmd
+
+#constant velocity mode
+load mux
+mux0.rt_prio = 2
+
+rev0.in = mux0.out0
+mux0.in0=vel_int0.pos_out
+mux0.in10=sim0.vel
+mux0.mux=sserial0.out0
+
+sserial0.pos_fb = mux0.out1
+mux0.in1 = linrev0.fb_out
+mux0.in11 = sserial0.pos_cmd
+
+
+load ramp
+ramp0.rt_prio = 1.950000
+ramp0.vel_ext_cmd = 0
+ramp0.en = 1.000000
+ramp0.scale = 1
+ramp0.max_vel = 18.000000
+ramp0.max_acc = 5.00000
+ramp0.at_speed_th = 0.010000
+ramp0.en_out = 1.000000
+ramp0.en_timer = 0.250000
+ramp0.en_delay = 0.250000
+
+term0.wave4 = ramp0.vel_cmd
+
+ramp0.vel_ext_cmd = sserial0.pos_cmd_d
+sim0.freq = ramp0.vel_cmd
+sserial0.scale = 1
+
+conf0.max_sat = 0.2
+conf0.max_pos_error = 100
+
+conf0.max_vel = 10000.000000
+

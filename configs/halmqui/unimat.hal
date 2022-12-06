@@ -27,9 +27,9 @@ addf pid.a.do-pid-calcs       servo-thread
 addf pid.b.do-pid-calcs       servo-thread
 addf pid.s.do-pid-calcs       servo-thread
 
-
+# C-Axis / spindle
 net cposcmd joint.5.motor-pos-cmd  => hm2_[HOSTMOT2](BOARD).0.stbl.0.0.pos_cmd
-net cvelcmd joint.5.vel-cmd        => hm2_[HOSTMOT2](BOARD).0.stbl.0.0.vel_cmd
+#net cvelcmd joint.5.vel-cmd        => hm2_[HOSTMOT2](BOARD).0.stbl.0.0.vel_cmd
 net cposfb  joint.5.motor-pos-fb  <=  hm2_[HOSTMOT2](BOARD).0.stbl.0.0.pos_fb
 net cenable joint.5.amp-enable-out => hm2_[HOSTMOT2](BOARD).0.stbl.0.0.enable
 net cfault  joint.5.amp-fault-in  <=  hm2_[HOSTMOT2](BOARD).0.stbl.0.0.fault
@@ -182,22 +182,51 @@ net spindle-vel-fb-rpm      => pid.s.feedback
 net spindle-output        <=  pid.s.output
 
 # --- Setup 7C80 GPIO bits for FWD/REV spindle control
-setp hm2_7c80.0.gpio.020.invert_output true
-setp hm2_7c80.0.gpio.020.is_output true
-setp hm2_7c80.0.gpio.021.invert_output true
-setp hm2_7c80.0.gpio.021.is_output true
+#setp hm2_7c80.0.gpio.020.invert_output true
+#setp hm2_7c80.0.gpio.020.is_output true
+#setp hm2_7c80.0.gpio.021.invert_output true
+#setp hm2_7c80.0.gpio.021.is_output true
 
-net spindle-cw  => hm2_7c80.0.gpio.020.out
-net spindle-ccw => hm2_7c80.0.gpio.021.out
+#net spindle-cw  => hm2_7c80.0.gpio.020.out
+#net spindle-ccw => hm2_7c80.0.gpio.021.out
+
 
 #net spindle-output      => hm2_7c80.0.pwmgen.00.value
-unlinkp hm2_[HOSTMOT2](BOARD).0.stbl.0.0.vel_cmd
-net spindle_speed_put spindle.0.speed-out hm2_[HOSTMOT2](BOARD).0.stbl.0.0.vel_cmd
 
 
+#net spindle-is-on      => hm2_7c80.0.stbl.0.0.out-00
+#net spindle-is-forward    => hm2_7c80.0.stbl.0.0.out-01	
 
-#net spindle-enable      => hm2_7c80.0.pwmgen.00.enabl
-#net spindle-enable      => hm2_[HOSTMOT2](BOARD).0.stbl.0.0.in2
+
+loadrt scale count=2
+addf scale.0 servo-thread
+setp scale.0.gain 0.01666
+net spindle-speed-scale spindle.0.speed-out => scale.0.in
+
+addf scale.1 servo-thread
+setp scale.1.gain 60
+net spindle-speed-fb-raw hm2_7c80.0.stbl.0.0.vel_fb => scale.1.in
+net spindle-speed-fb scale.1.out => spindle.0.speed-in
+#net spindle-speed-fb hm2_7c80.0.stbl.0.0.vel_fb => spindle.0.speed-in
+
+loadrt mux2 count=1
+addf mux2.0 servo-thread
+
+net spindle-is-on => mux2.0.sel
+net cvelcmd => mux2.0.in0
+net mux_spindle_vel 	mux2.0.in1 <= scale.0.out
+net mux_out		mux2.0.out => hm2_[HOSTMOT2](BOARD).0.stbl.0.0.vel_cmd
+
+#unlinkp hm2_[HOSTMOT2](BOARD).0.stbl.0.0.vel_cmd
+
+
+#loadrt scale count=1
+#addf scale.0 servo-thread
+#setp scale.0.gain 0.01666
+#net spindle-speed-scale spindle.0.speed-out => scale.0.in
+#net spindle-speed-out scale.0.out => hm2_[HOSTMOT2](BOARD).0.stbl.0.0.vel_cmd
+#net spindle_speed_put spindle.0.speed-out hm2_[HOSTMOT2](BOARD).0.stbl.0.0.vel_cmd
+
 
 # Uniref comp for turret referencing
 loadrt uniref
